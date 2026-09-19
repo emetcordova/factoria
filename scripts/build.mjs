@@ -11,7 +11,7 @@ const proof=JSON.parse(await readFile('public/proof.json','utf8'));
 for(const t of proof.testimonials||[])if(!t.approved||!t.name||!t.quote||!t.source)throw Error('Testimonials must be authentic, approved and sourced.');
 for(const b of proof.brands||[])if(!b.approved||!b.name||!b.source)throw Error('Client brands require confirmation.');
 await rm('dist',{recursive:true,force:true});await mkdir('dist/server',{recursive:true});await mkdir('dist/.openai',{recursive:true});
-const server=await readFile('server/commerce.mjs','utf8');
+const server=(await readFile('server/commerce.mjs','utf8')).replace("import defaults from '../public/site-settings.json' with {type: 'json'};",'const defaults='+await readFile('public/site-settings.json','utf8')+';');
 const worker=server+'\nconst ASSETS='+JSON.stringify(assets)+`;\nexport default {async fetch(request,env){const p=new URL(request.url).pathname;if(p.startsWith('/api/'))return handleApi(request,env);if(!['GET','HEAD'].includes(request.method))return new Response('Method not allowed',{status:405});const routes={'/':'/index.html','/checkout':'/checkout.html','/gracias':'/gracias.html'};const a=ASSETS[routes[p]||p];if(!a)return new Response('Página no encontrada',{status:404});const bytes=Uint8Array.from(atob(a.data),c=>c.charCodeAt(0));return new Response(request.method==='HEAD'?null:bytes,{headers:{'Content-Type':a.type,'Cache-Control':'public, max-age=0, must-revalidate','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin'}});}};\n`;
 await writeFile('dist/server/index.js',worker);await copyFile('.openai/hosting.json','dist/.openai/hosting.json');
 console.log('Built '+Object.keys(assets).length+' public assets and shared checkout API.');

@@ -1,8 +1,19 @@
 export const COURSE = { id: 'emet-contenido-ia-2026-10-01', name: 'Contenido en minutos con IA — Emet', amount: 1900, currency: 'usd' };
 const API_VERSION = '2026-08-26.dahlia';
-function settings(env) {
- const amount = Number(env.COURSE_PRICE_USD);
- return {date: env.EVENT_DATE || 'Jueves 1 de octubre de 2026', time: env.EVENT_TIME || 'Horario por confirmar', whatsapp: env.WHATSAPP_GROUP_URL || 'https://chat.whatsapp.com/B8WmTjXB53w6yMZji9maiE', course: {...COURSE, amount: Number.isInteger(amount) && amount > 0 && amount < 100000 ? amount * 100 : COURSE.amount}};
+import defaults from '../public/site-settings.json' with {type: 'json'};
+export function settings(env) {
+ const day=Number(env.EVENT_DAY||defaults.event.day), month=Number(env.EVENT_MONTH||defaults.event.month), year=Number(env.EVENT_YEAR||defaults.event.year);
+ const dateOnly=`${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+ const parsed=new Date(dateOnly+'T12:00:00Z');
+ if(!Number.isFinite(parsed.getTime())||parsed.toISOString().slice(0,10)!==dateOnly)throw Error('invalid_event_date');
+ const date=env.EVENT_DATE||new Intl.DateTimeFormat('es-PE',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'UTC'}).format(parsed);
+ const time=env.EVENT_TIME||defaults.event.timePeru;
+ const startsAt=/^([01]\d|2[0-3]):[0-5]\d$/.test(time)?`${dateOnly}T${time}:00-05:00`:null;
+ const amount=Number(env.COURSE_PRICE_USD||defaults.priceUSD);
+ if(!Number.isFinite(amount)||amount<=0||amount>=100000||Math.abs(amount*100-Math.round(amount*100))>0.00001)throw Error('invalid_course_price');
+ const whatsapp=env.WHATSAPP_GROUP_URL||defaults.whatsappGroupUrl;
+ if(!/^https:\/\/chat\.whatsapp\.com\/[a-zA-Z0-9]+$/.test(whatsapp))throw Error('invalid_whatsapp_url');
+ return {date, time:startsAt?time+' (Perú)':time||'Horario por confirmar', startsAt, dateOnly, whatsapp, course:{...COURSE,amount:Math.round(amount*100)}};
 }
 const json = (data, status = 200) => new Response(JSON.stringify(data), {status, headers: {'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 const clean = (v, max=250) => typeof v === 'string' ? v.slice(0,max) : '';
@@ -51,7 +62,7 @@ export async function handleApi(request,env,fetcher=fetch) {
  const u=new URL(request.url), path=u.pathname;
  try {
   const cfg=settings(env), c=cfg.course;
-  if(path==='/api/config' && request.method==='GET')return json({checkoutEnabled:ready(env),publishableKey:ready(env)?env.STRIPE_PUBLISHABLE_KEY:null,pixelId:/^\d+$/.test(env.META_PIXEL_ID||'')?env.META_PIXEL_ID:null,testMode:!env.STRIPE_SECRET_KEY?.startsWith('sk_live_'),course:{...c,amount:c.amount/100},eventDate:cfg.date,eventTime:cfg.time,whatsappUrl:cfg.whatsapp});
+  if(path==='/api/config' && request.method==='GET')return json({checkoutEnabled:ready(env),publishableKey:ready(env)?env.STRIPE_PUBLISHABLE_KEY:null,pixelId:/^\d+$/.test(env.META_PIXEL_ID||'')?env.META_PIXEL_ID:null,testMode:!env.STRIPE_SECRET_KEY?.startsWith('sk_live_'),course:{...c,amount:c.amount/100},eventDate:cfg.date,eventTime:cfg.time,eventStartsAt:cfg.startsAt,eventDateISO:cfg.dateOnly,whatsappUrl:cfg.whatsapp});
   if(path==='/api/checkout' && request.method==='POST') {
    if(!ready(env))return json({error:'Las inscripciones online todavía no están habilitadas. Escríbenos para coordinar tu acceso.'},503);
    if(request.headers.get('origin')!==origin(env))return json({error:'Solicitud no autorizada.'},403);

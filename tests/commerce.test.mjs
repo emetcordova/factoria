@@ -49,3 +49,16 @@ test('Unpaid or unconsented purchases never trigger CAPI',async()=>{
 test('Failed Meta delivery returns an error so Stripe can retry',async()=>{
  const r=await handleApi(webhook(),env,async()=>new Response('{}',{status:500}));assert.equal(r.status,502);
 });
+
+test('Structured date, Peru time and decimal price are shared with checkout',async()=>{
+ const changed={...env,EVENT_DAY:'2',EVENT_MONTH:'11',EVENT_YEAR:'2026',EVENT_TIME:'20:30',COURSE_PRICE_USD:'27.50'};
+ const cfg=await (await handleApi(new Request('https://example.com/api/config'),changed,never)).json();
+ assert.equal(cfg.eventStartsAt,'2026-11-02T20:30:00-05:00');assert.equal(cfg.course.amount,27.5);assert.equal(cfg.eventDateISO,'2026-11-02');assert.match(cfg.eventDate,/noviembre/);
+ let params;const r=await handleApi(req({requestId:'abcdefghijklmnopqrstuvwx'}),changed,async(url,o)=>{params=new URLSearchParams(o.body);return fakeResponse({client_secret:'test',id:session.id})});
+ assert.equal(r.status,200);assert.equal(params.get('line_items[0][price_data][unit_amount]'),'2750');
+});
+test('Impossible date or invalid configured price cannot create a payment',async()=>{
+ for(const overrides of [{EVENT_MONTH:'2',EVENT_DAY:'31'},{COURSE_PRICE_USD:'-1'},{COURSE_PRICE_USD:'abc'}]){
+ const r=await handleApi(req({requestId:'abcdefghijklmnopqrstuvwx'}),{...env,...overrides},never);assert.equal(r.status,502);
+ }
+});

@@ -7,7 +7,6 @@ export const consentAllowed=consent;
 export const configuration=config;
 function applySiteConfig(c){
  const date=c.eventDate||'Jueves 1 de octubre de 2026', time=c.eventTime||'Horario por confirmar', price=Number(c.course?.amount||19), priceText=`US$${price}`;
- const shortDate=date.replace(/^\S+\s+/,'');const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);nodes.forEach(node=>{node.nodeValue=node.nodeValue.replaceAll('Jueves 1 de octubre de 2026',date).replaceAll('jueves 1 de octubre de 2026',date.charAt(0).toLowerCase()+date.slice(1)).replaceAll('US$19',priceText).replaceAll('1 de octubre',shortDate)});
  document.querySelectorAll('.brand').forEach(el=>{if(!el.querySelector('.brand-logo')){el.textContent='';const img=document.createElement('img');img.className='brand-logo';img.src='/assets/emet-logo.png';img.alt='Emet Córdova';el.append(img)}});
  document.querySelectorAll('[data-event-date]').forEach(el=>el.textContent=date);
  document.querySelectorAll('[data-event-time]').forEach(el=>el.textContent=time);
@@ -16,13 +15,19 @@ function applySiteConfig(c){
  document.querySelectorAll('[data-whatsapp-group]').forEach(el=>el.href=c.whatsappUrl||'https://chat.whatsapp.com/B8WmTjXB53w6yMZji9maiE');
  document.querySelectorAll('.whatsapp-icon').forEach(el=>el.innerHTML='<svg viewBox="0 0 24 24" width="21" height="21" fill="none" aria-hidden="true"><path fill="currentColor" d="M12 3.5a8.5 8.5 0 0 0-7.31 12.84L3.5 20.5l4.3-1.13A8.5 8.5 0 1 0 12 3.5Zm0 15.4a6.9 6.9 0 0 1-3.51-.96l-.25-.15-2.55.67.68-2.48-.16-.26A6.9 6.9 0 1 1 12 18.9Zm3.79-5.18c-.2-.1-1.18-.58-1.36-.65-.18-.06-.31-.1-.44.1-.13.2-.5.65-.61.78-.11.13-.23.15-.43.05-.2-.1-.85-.31-1.62-.99-.6-.53-1-1.18-1.11-1.38-.12-.2-.01-.3.09-.4.09-.09.2-.23.3-.34.1-.12.13-.2.2-.33.07-.13.03-.25-.02-.35-.05-.1-.44-1.07-.6-1.46-.16-.38-.32-.33-.44-.34h-.38c-.13 0-.34.05-.52.25-.18.2-.68.67-.68 1.64s.7 1.9.8 2.03c.1.13 1.38 2.1 3.34 2.95.47.2.84.32 1.13.41.48.15.92.13 1.27.08.39-.06 1.18-.48 1.35-.94.17-.46.17-.85.12-.94-.05-.08-.18-.13-.38-.23Z"/></svg>');
  const announcement=document.querySelector('.announcement strong');if(announcement)announcement.textContent=date.toUpperCase();
- const firstBenefit=document.querySelector('.benefit-bar span:first-child strong');if(firstBenefit)firstBenefit.textContent=(date.match(/\d{1,2}/)||['01'])[0]+' OCT';
+ const dateValue=new Date((c.eventDateISO||'2026-10-01')+'T12:00:00Z');
+ const dateFormat=options=>new Intl.DateTimeFormat('es-PE',{...options,timeZone:'UTC'}).format(dateValue);
+ const firstBenefit=document.querySelector('.benefit-bar span:first-child strong');if(firstBenefit)firstBenefit.textContent=dateFormat({day:'2-digit',month:'short'}).toUpperCase();
+ const badge=document.querySelector('.offer-meta>span');if(badge){badge.replaceChildren(document.createTextNode(dateFormat({day:'2-digit'})),document.createElement('br'));const m=document.createElement('small');m.textContent=dateFormat({month:'long'}).toUpperCase();badge.append(m)}
+ const cover=document.querySelector('.cover-bottom>span');if(cover)cover.textContent=dateFormat({day:'2-digit',month:'2-digit',year:'2-digit'});
+ document.querySelectorAll('[data-schedule]').forEach(el=>el.textContent=date+' · '+time);
+ import('./showcase.js').then(m=>m.renderSchedule(c));
  document.querySelectorAll('.hero-action .button,.price-card .button').forEach(el=>{const arrow=document.createElement('span');arrow.textContent='↗';el.textContent=`Quiero mi cupo por ${priceText} `;el.append(arrow)});
  const priceEl=document.querySelector('.price-card .price');if(priceEl)priceEl.innerHTML=`<span>US$</span>${price}`;
  const mobilePrice=document.querySelector('.mobile-cta strong');if(mobilePrice)mobilePrice.textContent=priceText;
  const mobileDate=document.querySelector('.mobile-cta span');if(mobileDate)mobileDate.textContent=`${date.replace(/^\w+\s+/,'')} · En vivo`;
  const offerDate=document.querySelector('.offer-meta strong');if(offerDate)offerDate.textContent=date;
- const offerTime=document.querySelector('.offer-meta p');if(offerTime)offerTime.innerHTML=`En vivo por Zoom<br>${time}`;
+ const offerTime=document.querySelector('.offer-meta p');if(offerTime)offerTime.textContent='En vivo por Zoom · '+time;
 }
 export async function enablePixel(){
  const c=await config;if(!consent()||!c.pixelId||pixelLoaded)return;

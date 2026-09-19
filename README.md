@@ -87,3 +87,34 @@ No publiques documentos privados como fuentes: este JSON es público. `logo`, `p
 - [Versiones Stripe](https://docs.stripe.com/api/versioning)
 - [Vercel Functions](https://vercel.com/docs/functions/quickstart)
 - [Meta: deduplicación Pixel y Conversions API](https://developers.facebook.com/docs/marketing-api/conversions-api/deduplicate-pixel-and-server-events/)
+
+## Editar fecha, horario, precio y WhatsApp
+
+Edita `public/site-settings.json` para configurar valores sin entrar en Vercel:
+- `event.day`, `event.month`, `event.year`: día, mes y año numéricos.
+- `event.timePeru`: hora en Perú en formato 24 horas, por ejemplo `20:00`. Vacío significa horario por confirmar.
+- `priceUSD`: precio en dólares, admite hasta dos decimales.
+- `whatsappGroupUrl`: enlace del grupo después del pago.
+
+También puedes crear manualmente estas variables en Vercel → proyecto → Settings → Environment Variables → Production: `EVENT_DAY`, `EVENT_MONTH`, `EVENT_YEAR`, `EVENT_TIME`, `COURSE_PRICE_USD`, `WHATSAPP_GROUP_URL`. Las variables sobrescriben el archivo. **Subir código a GitHub no crea variables en el panel de Vercel.** Después de cambiarlas, ejecuta Redeploy. Elimina `EVENT_DATE` si lo habías configurado para usar el nuevo día/mes/año. Elimina un `EVENT_TIME` antiguo de texto y usa `HH:mm` para activar la conversión internacional.
+
+La hora base es Perú. La web convierte automáticamente a CDMX, Buenos Aires, Santiago, Bogotá, Nueva York/Miami, Los Ángeles y Madrid usando las zonas IANA y la fecha del evento, incluido horario de verano. No representa todos los husos de cada país.
+
+## Fotos, diseños y nueve videos
+
+Edita `public/gallery.json` y sube archivos a `public/assets/` o usa URLs HTTPS directas. Formato:
+
+```json
+{
+  "images": [
+    {"src":"/assets/diseno-alumna.webp","title":"Campaña de producto","author":"Nombre autorizado","approved":true}
+  ],
+  "videos": [
+    {"src":"/assets/reel-alumna.mp4","poster":"/assets/reel-portada.webp","title":"Producto en movimiento","author":"Nombre autorizado","approved":true}
+  ]
+}
+```
+
+Usa únicamente trabajos reales autorizados; `approved:true` confirma que puedes publicarlos. No se incluyen trabajos de estudiantes inventados. Sin fotos aprobadas se muestran ejemplos existentes etiquetados como ilustrativos; sin videos se muestran nueve espacios Próximamente. Los primeros nueve videos aprobados aparecen en orden, en tres columnas de escritorio y dos de móvil. Usa MP4 H.264 con audio AAC para compatibilidad móvil, portadas WebP y clips comprimidos. YouTube/Instagram no son URLs de archivos MP4.
+
+Las fotos se distribuyen en dos filas de movimiento opuesto cuando hay más de tres, con pausa y ampliación. Los videos visibles se reproducen en silencio (si el navegador lo permite), se abren con audio y controles al pulsarlos, y se detienen al cerrar o salir de pantalla. Escape cierra el visor y devuelve el foco; se conserva la posición de scroll. La preferencia de movimiento reducido desactiva el autoplay.
