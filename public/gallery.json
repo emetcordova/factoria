@@ -1,4 +1,135 @@
 {
-  "images": [],
-  "videos": []
+  "images": [
+    {
+      "src": "/assets/gallery/design-01.webp",
+      "title": "Diseño con IA · 01",
+      "approved": true
+    },
+    {
+      "src": "/assets/gallery/design-02.webp",
+      "title": "Diseño con IA · 02",
+      "approved": true
+    },
+    {
+      "src": "/assets/gallery/design-03.webp",
+      "title": "Diseño con IA · 03",
+      "approved": true
+    },
+    {
+      "src": "/assets/gallery/design-04.webp",
+      "title": "Diseño con IA · 04",
+      "approved": true
+    },
+    {
+      "src": "/assets/gallery/design-05.webp",
+      "title": "Diseño con IA · 05",
+      "approved": true
+    },
+    {
+      "src": "/assets/gallery/design-06.webp",
+      "title": "Diseño con IA · 06",
+      "approved": true
+    },
+    {
+      "src": "/assets/gallery/design-07.webp",
+      "title": "Diseño con IA · 07",
+      "approved": true
+    },
+    {
+      "src": "/assets/gallery/design-08.webp",
+      "title": "Diseño con IA · 08",
+      "approved": true
+    },
+    {
+      "src": "/assets/gallery/design-09.webp",
+      "title": "Diseño con IA · 09",
+      "approved": true
+    },
+    {
+      "src": "/assets/gallery/design-10.webp",
+      "title": "Diseño con IA · 10",
+      "approved": true
+    },
+    {
+      "src": "/assets/gallery/design-11.webp",
+      "title": "Diseño con IA · 11",
+      "approved": true
+    },
+    {
+      "src": "/assets/gallery/design-12.webp",
+      "title": "Diseño con IA · 12",
+      "approved": true
+    },
+    {
+      "src": "/assets/gallery/design-13.webp",
+      "title": "Diseño con IA · 13",
+      "approved": true
+    },
+    {
+      "src": "/assets/gallery/design-14.webp",
+      "title": "Diseño con IA · 14",
+      "approved": true
+    },
+    {
+      "src": "/assets/gallery/design-15.webp",
+      "title": "Diseño con IA · 15",
+      "approved": true
+    }
+  ],
+  "videos": [
+    {
+      "src": "/assets/gallery/demo.mp4",
+      "poster": "/assets/gallery/demo-poster.webp",
+      "title": "Demostración · 01",
+      "approved": true
+    },
+    {
+      "src": "/assets/gallery/demo.mp4",
+      "poster": "/assets/gallery/demo-poster.webp",
+      "title": "Demostración · 02",
+      "approved": true
+    },
+    {
+      "src": "/assets/gallery/demo.mp4",
+      "poster": "/assets/gallery/demo-poster.webp",
+      "title": "Demostración · 03",
+      "approved": true
+    },
+    {
+      "src": "/assets/gallery/demo.mp4",
+      "poster": "/assets/gallery/demo-poster.webp",
+      "title": "Demostración · 04",
+      "approved": true
+    },
+    {
+      "src": "/assets/gallery/demo.mp4",
+      "poster": "/assets/gallery/demo-poster.webp",
+      "title": "Demostración · 05",
+      "approved": true
+    },
+    {
+      "src": "/assets/gallery/demo.mp4",
+      "poster": "/assets/gallery/demo-poster.webp",
+      "title": "Demostración · 06",
+      "approved": true
+    },
+    {
+      "src": "/assets/gallery/demo.mp4",
+      "poster": "/assets/gallery/demo-poster.webp",
+      "title": "Demostración · 07",
+      "approved": true
+    },
+    {
+      "src": "/assets/gallery/demo.mp4",
+      "poster": "/assets/gallery/demo-poster.webp",
+      "title": "Demostración · 08",
+      "approved": true
+    },
+    {
+      "src": "/assets/gallery/demo.mp4",
+      "poster": "/assets/gallery/demo-poster.webp",
+      "title": "Demostración · 09",
+      "approved": true
+    }
+  ]
 }
