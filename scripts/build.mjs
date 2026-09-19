@@ -3,7 +3,7 @@ import path from 'node:path';
 const root=process.cwd();
 // public/ is the source for Vercel; the same source is bundled for the Sites Worker.
 const assets={};
-const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.webp':'image/webp','.svg':'image/svg+xml','.woff2':'font/woff2'};
+const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.jpg':'image/jpeg','.png':'image/png','.webp':'image/webp','.svg':'image/svg+xml','.woff2':'font/woff2'};
 async function walk(dir){for(const ent of await readdir(dir,{withFileTypes:true})){const f=path.join(dir,ent.name);if(ent.isDirectory())await walk(f);else{const name='/'+path.relative(path.join(root,'public'),f).replaceAll('\\','/');assets[name]={type:types[path.extname(f)]||'application/octet-stream',data:(await readFile(f)).toString('base64')};}}}
 await walk(path.join(root,'public'));
 if(!assets['/index.html']||!assets['/checkout.html']||!assets['/gracias.html'])throw Error('Missing page');
