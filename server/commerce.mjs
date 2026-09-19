@@ -1,5 +1,9 @@
 export const COURSE = { id: 'emet-contenido-ia-2026-10-01', name: 'Contenido en minutos con IA — Emet', amount: 1900, currency: 'usd' };
 const API_VERSION = '2026-08-26.dahlia';
+function settings(env) {
+ const amount = Number(env.COURSE_PRICE_USD);
+ return {date: env.EVENT_DATE || 'Jueves 1 de octubre de 2026', time: env.EVENT_TIME || 'Horario por confirmar', whatsapp: env.WHATSAPP_GROUP_URL || 'https://chat.whatsapp.com/B8WmTjXB53w6yMZji9maiE', course: {...COURSE, amount: Number.isInteger(amount) && amount > 0 && amount < 100000 ? amount * 100 : COURSE.amount}};
+}
 const json = (data, status = 200) => new Response(JSON.stringify(data), {status, headers: {'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 const clean = (v, max=250) => typeof v === 'string' ? v.slice(0,max) : '';
 function origin(env) { try { const u = new URL(env.SITE_URL || ''); return u.protocol === 'https:' ? u.origin : null; } catch { return null; } }
@@ -24,8 +28,8 @@ export async function verifySignature(raw,header,secret,now=Date.now()) {
  return false;
 }
 async function sha256(value) {return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))].map(x=>x.toString(16).padStart(2,'0')).join('');}
-export function isCoursePurchase(s) {return s?.metadata?.course_id===COURSE.id && s.payment_status==='paid' && s.amount_total===COURSE.amount && s.currency===COURSE.currency && s.mode==='payment';}
-export async function sendPurchase(s,event,env,fetcher) {
+export function isCoursePurchase(s,c=COURSE) {return s?.metadata?.course_id===c.id && s.payment_status==='paid' && s.amount_total===c.amount && s.currency===c.currency && s.mode==='payment';}
+export async function sendPurchase(s,event,env,fetcher,c=COURSE) {
  if(s.metadata.marketing_consent!=='true')return 'no_consent';
  if(!env.META_ACCESS_TOKEN)return 'not_configured';
  if(!/^\d+$/.test(env.META_PIXEL_ID||'') || !env.META_ACCESS_TOKEN || !/^v\d+\.\d+$/.test(env.META_GRAPH_VERSION||''))throw Error('meta_not_configured');
@@ -36,7 +40,7 @@ export async function sendPurchase(s,event,env,fetcher) {
  if(email)user.em=[await sha256(email)];
  for(const name of ['fbp','fbc'])if(s.metadata[name])user[name]=s.metadata[name];
  if(s.metadata.client_user_agent)user.client_user_agent=s.metadata.client_user_agent;
- const payload={data:[{event_name:'Purchase',event_time:event.created,event_id:'purchase_'+s.id,action_source:'website',event_source_url:origin(env)+'/checkout',user_data:user,custom_data:{currency:COURSE.currency.toUpperCase(),value:s.amount_total/100,content_ids:[COURSE.id],content_type:'product',num_items:1}}]};
+ const payload={data:[{event_name:'Purchase',event_time:event.created,event_id:'purchase_'+s.id,action_source:'website',event_source_url:origin(env)+'/checkout',user_data:user,custom_data:{currency:c.currency.toUpperCase(),value:s.amount_total/100,content_ids:[c.id],content_type:'product',num_items:1}}]};
  if(env.META_TEST_EVENT_CODE)payload.test_event_code=env.META_TEST_EVENT_CODE;
  const r=await fetcher(`https://graph.facebook.com/${env.META_GRAPH_VERSION}/${env.META_PIXEL_ID}/events`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+env.META_ACCESS_TOKEN},body:JSON.stringify(payload)});
  if(!r.ok)throw Error('meta_delivery_failed');
@@ -46,7 +50,8 @@ export async function sendPurchase(s,event,env,fetcher) {
 export async function handleApi(request,env,fetcher=fetch) {
  const u=new URL(request.url), path=u.pathname;
  try {
-  if(path==='/api/config' && request.method==='GET')return json({checkoutEnabled:ready(env),publishableKey:ready(env)?env.STRIPE_PUBLISHABLE_KEY:null,pixelId:/^\d+$/.test(env.META_PIXEL_ID||'')?env.META_PIXEL_ID:null,testMode:!env.STRIPE_SECRET_KEY?.startsWith('sk_live_'),course:COURSE});
+  const cfg=settings(env), c=cfg.course;
+  if(path==='/api/config' && request.method==='GET')return json({checkoutEnabled:ready(env),publishableKey:ready(env)?env.STRIPE_PUBLISHABLE_KEY:null,pixelId:/^\d+$/.test(env.META_PIXEL_ID||'')?env.META_PIXEL_ID:null,testMode:!env.STRIPE_SECRET_KEY?.startsWith('sk_live_'),course:{...c,amount:c.amount/100},eventDate:cfg.date,eventTime:cfg.time,whatsappUrl:cfg.whatsapp});
   if(path==='/api/checkout' && request.method==='POST') {
    if(!ready(env))return json({error:'Las inscripciones online todavía no están habilitadas. Escríbenos para coordinar tu acceso.'},503);
    if(request.headers.get('origin')!==origin(env))return json({error:'Solicitud no autorizada.'},403);
@@ -55,8 +60,8 @@ export async function handleApi(request,env,fetcher=fetch) {
    let body;try{body=JSON.parse(raw)}catch{return json({error:'Solicitud no válida.'},400)}
    if(!body || typeof body!=='object' || !/^[a-zA-Z0-9-]{20,80}$/.test(body.requestId||''))return json({error:'Recarga la página e inténtalo nuevamente.'},400);
    const params=new URLSearchParams({ui_mode:'embedded_page',mode:'payment',locale:'es',return_url:origin(env)+'/gracias?session_id={CHECKOUT_SESSION_ID}',
-    'line_items[0][price_data][currency]':COURSE.currency,'line_items[0][price_data][unit_amount]':String(COURSE.amount),'line_items[0][price_data][product_data][name]':COURSE.name,'line_items[0][quantity]':'1',
-    'metadata[course_id]':COURSE.id,'metadata[marketing_consent]':String(body.consent===true),'payment_intent_data[metadata][course_id]':COURSE.id});
+    'line_items[0][price_data][currency]':c.currency,'line_items[0][price_data][unit_amount]':String(c.amount),'line_items[0][price_data][product_data][name]':c.name,'line_items[0][quantity]':'1',
+    'metadata[course_id]':c.id,'metadata[marketing_consent]':String(body.consent===true),'payment_intent_data[metadata][course_id]':c.id});
    if(body.consent===true) {
     for(const name of ['fbp','fbc']){const v=clean(body[name]);if(/^fb\.\d+\.\d+\.[a-zA-Z0-9_-]+$/.test(v))params.set('metadata['+name+']',v);}
     params.set('metadata[client_user_agent]',clean(request.headers.get('user-agent'),450));
@@ -69,17 +74,17 @@ export async function handleApi(request,env,fetcher=fetch) {
    if(!ready(env))return json({error:'No podemos verificar el pago en este momento.'},503);
    const id=u.searchParams.get('session_id');if(!/^cs_(test_|live_)?[a-zA-Z0-9]{10,250}$/.test(id||''))return json({error:'Referencia de compra no válida.'},400);
    const session=await stripe('checkout/sessions/'+encodeURIComponent(id),env,fetcher);
-   if(session.metadata?.course_id!==COURSE.id)return json({error:'Compra no encontrada.'},404);
-   return json({paid:isCoursePurchase(session),status:session.status,paymentStatus:session.payment_status,value:session.amount_total/100,currency:session.currency?.toUpperCase(),eventId:'purchase_'+session.id,allowTracking:session.metadata.marketing_consent==='true' && session.livemode===true});
+   if(session.metadata?.course_id!==c.id)return json({error:'Compra no encontrada.'},404);
+   return json({paid:isCoursePurchase(session,c),status:session.status,paymentStatus:session.payment_status,value:session.amount_total/100,currency:session.currency?.toUpperCase(),eventId:'purchase_'+session.id,allowTracking:session.metadata.marketing_consent==='true' && session.livemode===true});
   }
   if(path==='/api/stripe-webhook' && request.method==='POST') {
    if(!env.STRIPE_WEBHOOK_SECRET)return json({error:'Webhook no configurado.'},503);
    const raw=await request.text();if(raw.length>1000000)return json({error:'Payload too large.'},413);
    if(!await verifySignature(raw,request.headers.get('stripe-signature'),env.STRIPE_WEBHOOK_SECRET))return json({error:'Invalid signature.'},400);
    const event=JSON.parse(raw);
-   if(['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type) && isCoursePurchase(event.data?.object)) {
+   if(['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type) && isCoursePurchase(event.data?.object,c)) {
     // A non-2xx response on delivery failure makes Stripe retry; deterministic event_id deduplicates retries and Pixel.
-    const delivery=await sendPurchase(event.data.object,event,env,fetcher);return json({received:true,delivery});
+    const delivery=await sendPurchase(event.data.object,event,env,fetcher,c);return json({received:true,delivery});
    }
    return json({received:true});
   }

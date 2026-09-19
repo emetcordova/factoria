@@ -27,6 +27,10 @@ El proyecto no requiere dependencias de npm externas. La compilación produce ta
 | Variable | Uso |
 |---|---|
 | `SITE_URL` | Origen HTTPS definitivo. Obligatorio para habilitar checkout. |
+| `EVENT_DATE` | Fecha visible del taller, por ejemplo `Jueves 1 de octubre de 2026`. |
+| `EVENT_TIME` | Hora visible del taller, por ejemplo `8:00 p. m. (hora Perú)`. |
+| `COURSE_PRICE_USD` | Precio entero en dólares; el servidor lo aplica al Checkout. |
+| `WHATSAPP_GROUP_URL` | Enlace del grupo mostrado después de un pago confirmado. |
 | `STRIPE_SECRET_KEY` | Clave secreta, únicamente en servidor. |
 | `STRIPE_PUBLISHABLE_KEY` | Clave publicable del mismo modo test/live que la secreta. |
 | `STRIPE_WEBHOOK_SECRET` | Secreto de firma del endpoint webhook específico de ese despliegue. |
