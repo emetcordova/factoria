@@ -53,3 +53,6 @@
 
 /* Horizontal dragging preserves vertical page scrolling and resumes the loop. */
 .gallery-row{touch-action:pan-y pinch-zoom;cursor:grab}.gallery-row.dragging,.gallery-row.dragging .gallery-piece{cursor:grabbing}.gallery-piece img{user-select:none;-webkit-user-drag:none}
+
+/* Direct pixel tracking: no CSS animation can compete with the finger. */
+.gallery-row.drag-ready{overflow:hidden}.drag-ready .gallery-track{animation:none!important;will-change:transform;transition:none!important}.drag-ready .gallery-group[aria-hidden=true]{display:flex}

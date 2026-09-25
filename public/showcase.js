@@ -8,41 +8,54 @@ const gallery=document.querySelector('#image-gallery');
 if(gallery&&!gallery.dataset.initialized){gallery.dataset.initialized='true';init().catch(()=>{document.querySelector('#gallery-description').textContent='Las creaciones estarán disponibles próximamente.'});}
 
 function enableGalleryDrag(viewport,track){
- const animation=track.getAnimations()[0];
- if(!animation)return;
- let gesture=null,suppressClickUntil=0;
+ let gesture=null,suppressClickUntil=0,offset=0,width=0,lastFrame=0;
+ const direction=viewport.classList.contains('reverse')?1:-1;
+ const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
+ viewport.classList.add('drag-ready');
+ const paint=()=>{
+  if(width)offset=-(((-offset%width)+width)%width);
+  track.style.transform='translate3d('+offset+'px,0,0)';
+ };
+ const measure=()=>{width=track.firstElementChild.getBoundingClientRect().width;paint()};
+ measure();
+ new ResizeObserver(measure).observe(track.firstElementChild);
+ const frame=now=>{
+  const elapsed=lastFrame?Math.min(now-lastFrame,64):0;lastFrame=now;
+  if(!gesture&&!document.hidden&&!gallery.classList.contains('paused')&&!reducedMotion.matches){
+   offset+=direction*width*elapsed/45000;paint();
+  }
+  requestAnimationFrame(frame);
+ };
+ requestAnimationFrame(frame);
  const finish=e=>{
   if(!gesture||e.pointerId!==gesture.id)return;
   if(gesture.dragging)suppressClickUntil=performance.now()+400;
   gesture=null;
-  track.style.removeProperty('animation-play-state');
   viewport.classList.remove('dragging');
   if(viewport.hasPointerCapture(e.pointerId))viewport.releasePointerCapture(e.pointerId);
  };
  viewport.addEventListener('pointerdown',e=>{
-  if(!e.isPrimary||e.button!==0||gesture)return;
-  const width=track.firstElementChild.getBoundingClientRect().width;
-  if(!width)return;
-  gesture={id:e.pointerId,x:e.clientX,y:e.clientY,time:Number(animation.currentTime)||0,width,dragging:false};
-  track.style.animationPlayState='paused';
+  if(!e.isPrimary||e.button!==0||gesture||!width)return;
+  gesture={id:e.pointerId,x:e.clientX,y:e.clientY,offset,dragging:false};
  });
  viewport.addEventListener('pointermove',e=>{
   if(!gesture||e.pointerId!==gesture.id)return;
   const dx=e.clientX-gesture.x,dy=e.clientY-gesture.y;
   if(!gesture.dragging){
-   if(Math.max(Math.abs(dx),Math.abs(dy))<6)return;
+   if(Math.max(Math.abs(dx),Math.abs(dy))<4)return;
    if(Math.abs(dy)>Math.abs(dx)){finish(e);return;}
    gesture.dragging=true;
    viewport.setPointerCapture(e.pointerId);
    viewport.classList.add('dragging');
   }
   e.preventDefault();
-  const duration=Number(animation.effect.getTiming().duration);
-  const direction=viewport.classList.contains('reverse')?-1:1;
-  const time=gesture.time-dx/gesture.width*duration*direction;
-  animation.currentTime=((time%duration)+duration)%duration;
- });
- for(const event of ['pointerup','pointercancel','lostpointercapture'])viewport.addEventListener(event,finish);
+  // One screen pixel of finger movement moves the track one pixel.
+  offset=gesture.offset+dx;paint();
+ },{passive:false});
+ for(const event of ['pointerup','pointercancel'])viewport.addEventListener(event,finish);
+ // Touch browsers transfer implicit capture from the image to the row.
+ // Ignore the image's bubbling lostpointercapture: the drag is still active.
+ viewport.addEventListener('lostpointercapture',e=>{if(e.target===viewport)finish(e)});
  viewport.addEventListener('pointerleave',e=>{if(gesture&&!gesture.dragging)finish(e)});
  viewport.addEventListener('dragstart',e=>e.preventDefault());
  viewport.addEventListener('click',e=>{
