@@ -1,6 +1,11 @@
 {
   "images": [
     {
+      "src": "/assets/gallery/nutrition-green.webp",
+      "title": "Atención nutricional · Tu salud empieza en tus elecciones",
+      "approved": true
+    },
+    {
       "src": "/assets/gallery/design-01.webp",
       "title": "Diseño con IA · 01",
       "approved": true
@@ -73,6 +78,11 @@
     {
       "src": "/assets/gallery/design-15.webp",
       "title": "Diseño con IA · 15",
+      "approved": true
+    },
+    {
+      "src": "/assets/gallery/dental-smile.webp",
+      "title": "Sonrisa · Centro dental",
       "approved": true
     }
   ],
