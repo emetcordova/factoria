@@ -21,8 +21,8 @@ function applySiteConfig(c){
  const badge=document.querySelector('.offer-meta>span');if(badge){badge.replaceChildren(document.createTextNode(dateFormat({day:'2-digit'})),document.createElement('br'));const m=document.createElement('small');m.textContent=dateFormat({month:'long'}).toUpperCase();badge.append(m)}
  const cover=document.querySelector('.cover-bottom>span');if(cover)cover.textContent=dateFormat({day:'2-digit',month:'2-digit',year:'2-digit'});
  document.querySelectorAll('[data-schedule]').forEach(el=>el.textContent=date+' · '+time);
- import('./showcase.js').then(m=>m.renderSchedule(c));
- document.querySelectorAll('.hero-action .button,.price-card .button').forEach(el=>{const arrow=document.createElement('span');arrow.textContent='↗';el.textContent=`Quiero mi cupo por ${priceText} `;el.append(arrow)});
+ import('./showcase.js?v=showcase-5').then(m=>m.renderSchedule(c));
+ document.querySelectorAll(".hero-action .button[href='/checkout'],.price-card .button").forEach(el=>{const arrow=document.createElement('span');arrow.textContent='↗';el.textContent=`Quiero mi cupo por ${priceText} `;el.append(arrow)});
  const priceEl=document.querySelector('.price-card .price');if(priceEl)priceEl.innerHTML=`<span>US$</span>${price}`;
  const mobilePrice=document.querySelector('.mobile-cta strong');if(mobilePrice)mobilePrice.textContent=priceText;
  const mobileDate=document.querySelector('.mobile-cta span');if(mobileDate)mobileDate.textContent=`${date.replace(/^\w+\s+/,'')} · En vivo`;

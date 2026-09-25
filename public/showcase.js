@@ -5,7 +5,7 @@ export function renderSchedule(c){
  for(const [flag,label,timeZone] of zones){const card=document.createElement('div');card.className='country-time';const country=document.createElement('span');country.textContent=flag+' '+label;const time=document.createElement('strong');if(c.eventStartsAt){const instant=new Date(c.eventStartsAt);time.textContent=new Intl.DateTimeFormat('es-PE',{timeZone,hour:'numeric',minute:'2-digit',hour12:true}).format(instant)}else time.textContent='Por confirmar';card.append(country,time);root.append(card)}
 }
 const gallery=document.querySelector('#image-gallery');
-if(gallery) init().catch(()=>{document.querySelector('#gallery-description').textContent='Las creaciones estarán disponibles próximamente.'});
+if(gallery&&!gallery.dataset.initialized){gallery.dataset.initialized='true';init().catch(()=>{document.querySelector('#gallery-description').textContent='Las creaciones estarán disponibles próximamente.'});}
 async function init(){
  const response=await fetch('/gallery.json');if(!response.ok)throw Error('gallery');const data=await response.json();
  const safe=url=>typeof url==='string'&&(/^https:\/\//.test(url)||/^\/assets\//.test(url));

@@ -41,3 +41,12 @@
 
 /* Animated preview remains visible until the muted video clock advances. */
 .video-tile .video-motion-fallback{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}.video-tile.has-motion-preview video{position:relative;opacity:0;pointer-events:none}.video-tile.has-motion-preview.is-playing video{opacity:1}.video-tile.is-playing .video-motion-fallback{opacity:0}
+
+/* Bring creative examples within easy reach of the opening message. */
+.hero-action{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.examples-cta{border:1px solid #d7c9ef;color:#5425a0;background:#fff}
+.examples-nav{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px}
+.examples-nav a{display:inline-flex;align-items:center;gap:12px;padding:12px 20px;border-radius:100px;border:1px solid #d7c9ef;background:#fff;color:#5425a0;font-weight:700;font-size:14px}
+.examples-nav a:hover,.examples-nav a:focus-visible{background:#eee5fc}
+#creaciones,#videos{scroll-margin-top:24px}
+@media(max-width:760px){.hero-action{flex-direction:column;align-items:stretch}.examples-nav a{padding:11px 16px;font-size:13px}}
