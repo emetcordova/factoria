@@ -6,13 +6,57 @@ export function renderSchedule(c){
 }
 const gallery=document.querySelector('#image-gallery');
 if(gallery&&!gallery.dataset.initialized){gallery.dataset.initialized='true';init().catch(()=>{document.querySelector('#gallery-description').textContent='Las creaciones estarán disponibles próximamente.'});}
+
+function enableGalleryDrag(viewport,track){
+ const animation=track.getAnimations()[0];
+ if(!animation)return;
+ let gesture=null,suppressClickUntil=0;
+ const finish=e=>{
+  if(!gesture||e.pointerId!==gesture.id)return;
+  if(gesture.dragging)suppressClickUntil=performance.now()+400;
+  gesture=null;
+  track.style.removeProperty('animation-play-state');
+  viewport.classList.remove('dragging');
+  if(viewport.hasPointerCapture(e.pointerId))viewport.releasePointerCapture(e.pointerId);
+ };
+ viewport.addEventListener('pointerdown',e=>{
+  if(!e.isPrimary||e.button!==0||gesture)return;
+  const width=track.firstElementChild.getBoundingClientRect().width;
+  if(!width)return;
+  gesture={id:e.pointerId,x:e.clientX,y:e.clientY,time:Number(animation.currentTime)||0,width,dragging:false};
+  track.style.animationPlayState='paused';
+ });
+ viewport.addEventListener('pointermove',e=>{
+  if(!gesture||e.pointerId!==gesture.id)return;
+  const dx=e.clientX-gesture.x,dy=e.clientY-gesture.y;
+  if(!gesture.dragging){
+   if(Math.max(Math.abs(dx),Math.abs(dy))<6)return;
+   if(Math.abs(dy)>Math.abs(dx)){finish(e);return;}
+   gesture.dragging=true;
+   viewport.setPointerCapture(e.pointerId);
+   viewport.classList.add('dragging');
+  }
+  e.preventDefault();
+  const duration=Number(animation.effect.getTiming().duration);
+  const direction=viewport.classList.contains('reverse')?-1:1;
+  const time=gesture.time-dx/gesture.width*duration*direction;
+  animation.currentTime=((time%duration)+duration)%duration;
+ });
+ for(const event of ['pointerup','pointercancel','lostpointercapture'])viewport.addEventListener(event,finish);
+ viewport.addEventListener('pointerleave',e=>{if(gesture&&!gesture.dragging)finish(e)});
+ viewport.addEventListener('dragstart',e=>e.preventDefault());
+ viewport.addEventListener('click',e=>{
+  if(performance.now()<suppressClickUntil){e.preventDefault();e.stopImmediatePropagation();}
+ },true);
+}
+
 async function init(){
  const response=await fetch('/gallery.json');if(!response.ok)throw Error('gallery');const data=await response.json();
  const safe=url=>typeof url==='string'&&(/^https:\/\//.test(url)||/^\/assets\//.test(url));
  const authentic=(data.images||[]).filter(x=>safe(x.src)&&x.approved===true).slice(0,20);
  const demo=[{src:'/assets/perfume.webp',title:'Fotografía de producto'},{src:'/assets/creator-light.webp',title:'Retrato editorial'},{src:'/assets/community.webp',title:'Escena de marca'}];
  const images=authentic.length?authentic:demo;
- document.querySelector('#gallery-description').textContent=authentic.length?'Diseños creados con IA. Toca una pieza para verla completa.':'Ejemplos ilustrativos creados con IA. Las creaciones de estudiantes se incorporarán próximamente.';
+ document.querySelector('#gallery-description').textContent=authentic.length?'Desliza para explorar. Toca un diseño para verlo completo.':'Ejemplos ilustrativos creados con IA. Las creaciones de estudiantes se incorporarán próximamente.';
  const dialog=document.querySelector('#media-dialog'),content=document.querySelector('#media-content');let trigger=null,oldOverflow='';
  const previews=[];
  const pendingPlays=new WeakSet();
@@ -48,7 +92,7 @@ async function init(){
  dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close()}});
  dialog.addEventListener('close',()=>{const active=content.querySelector('video');if(active){active.muted=true;active.pause();}content.replaceChildren();document.body.style.overflow=oldOverflow;trigger?.focus({preventScroll:true});gallery.classList.remove('paused');startPreviews()});
  const split=Math.ceil(images.length/2);const rows=[images.slice(0,split),images.slice(split)].filter(row=>row.length);
- rows.forEach((items,i)=>{const viewport=document.createElement('div');viewport.className='gallery-row'+(i%2?' reverse':'');const track=document.createElement('div');track.className='gallery-track';for(let copy=0;copy<2;copy++){const group=document.createElement('div');group.className='gallery-group';if(copy)group.setAttribute('aria-hidden','true');for(const [j,item] of items.entries()){const button=document.createElement('button');button.className='gallery-piece';if(copy||j>=items.length){button.tabIndex=-1;button.setAttribute('aria-hidden','true')}const img=document.createElement('img');img.src=item.src;img.alt=item.title||'Creación con IA';img.loading='lazy';img.width=320;img.height=320;button.append(img);button.addEventListener('click',()=>open(item,false,button));group.append(button)}track.append(group)}viewport.append(track);gallery.append(viewport)});
+ rows.forEach((items,i)=>{const viewport=document.createElement('div');viewport.className='gallery-row'+(i%2?' reverse':'');const track=document.createElement('div');track.className='gallery-track';for(let copy=0;copy<2;copy++){const group=document.createElement('div');group.className='gallery-group';if(copy)group.setAttribute('aria-hidden','true');for(const [j,item] of items.entries()){const button=document.createElement('button');button.className='gallery-piece';if(copy||j>=items.length){button.tabIndex=-1;button.setAttribute('aria-hidden','true')}const img=document.createElement('img');img.src=item.src;img.alt=item.title||'Creación con IA';img.loading='lazy';img.width=320;img.height=320;button.append(img);button.addEventListener('click',()=>open(item,false,button));group.append(button)}track.append(group)}viewport.append(track);gallery.append(viewport);enableGalleryDrag(viewport,track)});
  const videos=(data.videos||[]).filter(x=>safe(x.src)&&x.approved===true).slice(0,9);const grid=document.querySelector('#video-grid');
  for(let i=0;i<9;i++){const item=videos[i];if(!item){const tile=document.createElement('div');tile.className='video-placeholder';const n=document.createElement('span');n.textContent=String(i+1).padStart(2,'0');const label=document.createElement('strong');label.textContent='Próximamente';const small=document.createElement('small');small.textContent='Una nueva creación en movimiento';tile.append(n,label,small);grid.append(tile);continue}const button=document.createElement('button');button.className='video-tile';button.setAttribute('aria-label','Reproducir con audio: '+(item.title||'Video '+(i+1)));const video=document.createElement('video');video.muted=true;video.loop=true;video.playsInline=true;video.defaultMuted=true;video.setAttribute('muted','');video.setAttribute('playsinline','');video.setAttribute('webkit-playsinline','');video.autoplay=true;video.setAttribute('autoplay','');video.preload='auto';video.src=safe(item.preview)?item.preview:item.src;if(safe(item.poster))video.poster=item.poster;video.setAttribute('aria-hidden','true');if(safe(item.motionPreview)){const motion=document.createElement('img');motion.className='video-motion-fallback';motion.src=item.motionPreview;motion.alt='';motion.setAttribute('aria-hidden','true');motion.loading='eager';button.classList.add('has-motion-preview');button.append(motion)}button.append(video);button.addEventListener('click',()=>open(item,true,button));grid.append(button);registerPreview(button,video)}
  document.querySelector('#video-description').hidden=true;

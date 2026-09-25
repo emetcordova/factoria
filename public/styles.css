@@ -50,3 +50,6 @@
 .examples-nav a:hover,.examples-nav a:focus-visible{background:#eee5fc}
 #creaciones,#videos{scroll-margin-top:24px}
 @media(max-width:760px){.hero-action{flex-direction:column;align-items:stretch}.examples-nav a{padding:11px 16px;font-size:13px}}
+
+/* Horizontal dragging preserves vertical page scrolling and resumes the loop. */
+.gallery-row{touch-action:pan-y pinch-zoom;cursor:grab}.gallery-row.dragging,.gallery-row.dragging .gallery-piece{cursor:grabbing}.gallery-piece img{user-select:none;-webkit-user-drag:none}
