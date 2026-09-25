@@ -38,3 +38,6 @@
 .button[href='/checkout']::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(110deg,transparent 34%,#ffffff12 42%,#ffffff66 50%,#ffffff12 58%,transparent 66%);background-size:300% 100%;background-repeat:no-repeat;animation:cta-sweep 2.6s linear infinite}
 @keyframes cta-sweep{from{background-position:150% 0}to{background-position:-50% 0}}
 @media(prefers-reduced-motion:reduce){.button[href='/checkout']::after{animation:none;background-position:50% 0;opacity:.35}}
+
+/* Animated preview remains visible until the muted video clock advances. */
+.video-tile .video-motion-fallback{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}.video-tile.has-motion-preview video{position:relative;opacity:0;pointer-events:none}.video-tile.has-motion-preview.is-playing video{opacity:1}.video-tile.is-playing .video-motion-fallback{opacity:0}

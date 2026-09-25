@@ -81,55 +81,73 @@
       "src": "/assets/gallery/demo.mp4",
       "poster": "/assets/gallery/demo-poster.webp",
       "title": "Demostración · 01",
-      "approved": true
+      "approved": true,
+      "preview": "/assets/gallery/demo-preview.mp4",
+      "motionPreview": "/assets/gallery/demo-motion.webp"
     },
     {
       "src": "/assets/gallery/demo.mp4",
       "poster": "/assets/gallery/demo-poster.webp",
       "title": "Demostración · 02",
-      "approved": true
+      "approved": true,
+      "preview": "/assets/gallery/demo-preview.mp4",
+      "motionPreview": "/assets/gallery/demo-motion.webp"
     },
     {
       "src": "/assets/gallery/demo.mp4",
       "poster": "/assets/gallery/demo-poster.webp",
       "title": "Demostración · 03",
-      "approved": true
+      "approved": true,
+      "preview": "/assets/gallery/demo-preview.mp4",
+      "motionPreview": "/assets/gallery/demo-motion.webp"
     },
     {
       "src": "/assets/gallery/demo.mp4",
       "poster": "/assets/gallery/demo-poster.webp",
       "title": "Demostración · 04",
-      "approved": true
+      "approved": true,
+      "preview": "/assets/gallery/demo-preview.mp4",
+      "motionPreview": "/assets/gallery/demo-motion.webp"
     },
     {
       "src": "/assets/gallery/demo.mp4",
       "poster": "/assets/gallery/demo-poster.webp",
       "title": "Demostración · 05",
-      "approved": true
+      "approved": true,
+      "preview": "/assets/gallery/demo-preview.mp4",
+      "motionPreview": "/assets/gallery/demo-motion.webp"
     },
     {
       "src": "/assets/gallery/demo.mp4",
       "poster": "/assets/gallery/demo-poster.webp",
       "title": "Demostración · 06",
-      "approved": true
+      "approved": true,
+      "preview": "/assets/gallery/demo-preview.mp4",
+      "motionPreview": "/assets/gallery/demo-motion.webp"
     },
     {
       "src": "/assets/gallery/demo.mp4",
       "poster": "/assets/gallery/demo-poster.webp",
       "title": "Demostración · 07",
-      "approved": true
+      "approved": true,
+      "preview": "/assets/gallery/demo-preview.mp4",
+      "motionPreview": "/assets/gallery/demo-motion.webp"
     },
     {
       "src": "/assets/gallery/demo.mp4",
       "poster": "/assets/gallery/demo-poster.webp",
       "title": "Demostración · 08",
-      "approved": true
+      "approved": true,
+      "preview": "/assets/gallery/demo-preview.mp4",
+      "motionPreview": "/assets/gallery/demo-motion.webp"
     },
     {
       "src": "/assets/gallery/demo.mp4",
       "poster": "/assets/gallery/demo-poster.webp",
       "title": "Demostración · 09",
-      "approved": true
+      "approved": true,
+      "preview": "/assets/gallery/demo-preview.mp4",
+      "motionPreview": "/assets/gallery/demo-motion.webp"
     }
   ]
 }
