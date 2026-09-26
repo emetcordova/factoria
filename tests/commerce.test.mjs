@@ -15,6 +15,13 @@ test('Configuration never exposes secret keys and checkout fails safely when unc
  const r=await handleApi(new Request('https://example.com/api/config'),env,never);const data=await r.json();assert.equal(data.checkoutEnabled,true);assert.equal(data.STRIPE_SECRET_KEY,undefined);assert.equal(data.META_ACCESS_TOKEN,undefined);
  assert.equal((await handleApi(req({}),{},never)).status,503);
 });
+test('Configuration exposes only validated public analytics IDs and inventory',async()=>{
+ const configured={...env,GOOGLE_ANALYTICS_ID:'G-ABC1234567',TIKTOK_PIXEL_ID:'C1234567890ABCDE',AVAILABLE_SEATS:'7'};
+ const data=await (await handleApi(new Request('https://example.com/api/config'),configured,never)).json();
+ assert.equal(data.googleAnalyticsId,'G-ABC1234567');assert.equal(data.tiktokPixelId,'C1234567890ABCDE');assert.equal(data.availableSeats,7);
+ const invalid=await (await handleApi(new Request('https://example.com/api/config'),{...env,GOOGLE_ANALYTICS_ID:'bad',TIKTOK_PIXEL_ID:'bad'},never)).json();
+ assert.equal(invalid.googleAnalyticsId,null);assert.equal(invalid.tiktokPixelId,null);
+});
 test('Checkout rejects a foreign origin',async()=>assert.equal((await handleApi(req({},'https://evil.example'),env,never)).status,403));
 test('Checkout price, currency, quantity and redirect are fixed server-side',async()=>{
  let body,headers;const r=await handleApi(req({requestId:'abcdefghijklmnopqrstuvwx',amount:1,currency:'pen',return_url:'https://evil.example',quantity:100,consent:false}),env,async(url,o)=>{assert.equal(url,'https://api.stripe.com/v1/checkout/sessions');body=new URLSearchParams(o.body);headers=o.headers;return fakeResponse({client_secret:'secret',id:session.id})});
@@ -61,4 +68,13 @@ test('Impossible date or invalid configured price cannot create a payment',async
  for(const overrides of [{EVENT_MONTH:'2',EVENT_DAY:'31'},{COURSE_PRICE_USD:'-1'},{COURSE_PRICE_USD:'abc'}]){
  const r=await handleApi(req({requestId:'abcdefghijklmnopqrstuvwx'}),{...env,...overrides},never);assert.equal(r.status,502);
  }
+});
+test('Recent activity contains only anonymous, recent, paid live purchases',async()=>{
+ const live={...env,STRIPE_SECRET_KEY:'sk_live_example',STRIPE_PUBLISHABLE_KEY:'pk_live_example'};const created=Math.floor(Date.now()/1000)-70;
+ const recent={...session,livemode:true,created,customer_details:{name:'Jorge Example',email:'jorge@example.com',address:{country:'PY'}}};
+ const old={...recent,created:created-31*24*60*60,customer_details:{address:{country:'PE'}}};
+ const other={...recent,metadata:{course_id:'other'},customer_details:{address:{country:'AR'}}};
+ const r=await handleApi(new Request('https://example.com/api/recent-activity'),live,async(url)=>{assert.match(url,/checkout\/sessions\?limit=30&status=complete$/);return fakeResponse({data:[recent,old,other]})});
+ const data=await r.json();assert.deepEqual(data.purchases,[{countryCode:'PY',created}]);assert.equal(JSON.stringify(data).includes('Jorge'),false);assert.equal(JSON.stringify(data).includes('@'),false);assert.equal(JSON.stringify(data).includes(session.id),false);
+ const testMode=await (await handleApi(new Request('https://example.com/api/recent-activity'),env,never)).json();assert.deepEqual(testMode.purchases,[]);
 });

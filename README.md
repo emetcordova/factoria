@@ -31,10 +31,13 @@ El proyecto no requiere dependencias de npm externas. La compilación produce ta
 | `EVENT_TIME` | Hora visible del taller, por ejemplo `8:00 p. m. (hora Perú)`. |
 | `COURSE_PRICE_USD` | Precio entero en dólares; el servidor lo aplica al Checkout. |
 | `WHATSAPP_GROUP_URL` | Enlace del grupo mostrado después de un pago confirmado. |
+| `AVAILABLE_SEATS` | Cupos disponibles mostrados en el aviso de la landing. Valor predeterminado: `7`. |
 | `STRIPE_SECRET_KEY` | Clave secreta, únicamente en servidor. |
 | `STRIPE_PUBLISHABLE_KEY` | Clave publicable del mismo modo test/live que la secreta. |
 | `STRIPE_WEBHOOK_SECRET` | Secreto de firma del endpoint webhook específico de ese despliegue. |
 | `META_PIXEL_ID` | ID numérico del píxel/dataset. |
+| `GOOGLE_ANALYTICS_ID` | ID de medición de Google Analytics 4, por ejemplo `G-XXXXXXXXXX`. |
+| `TIKTOK_PIXEL_ID` | ID del píxel de TikTok Ads. |
 | `META_ACCESS_TOKEN` | Token privado para Conversions API, solo si se activa CAPI. |
 | `META_GRAPH_VERSION` | Versión de Graph API admitida por tu app Meta (formato `vNN.N`). Necesaria con CAPI. |
 | `META_TEST_EVENT_CODE` | Opcional, código de Test Events. Retirar para campañas reales. |
@@ -56,6 +59,12 @@ Configura `META_PIXEL_ID`. Con consentimiento se activa el Pixel. Para recuperar
 El evento de compra lleva `event_id=purchase_<stripe_session_id>` tanto en navegador como en servidor. Los reintentos usan el mismo ID y Meta deduplica. El correo se normaliza y transforma con SHA-256 en el servidor; no se expone a la página de confirmación. Se envían fbp/fbc y UTMs únicamente con consentimiento. La negativa no impide comprar. Las compras Stripe en modo test no se envían como compras reales; CAPI de prueba requiere `META_TEST_EVENT_CODE`.
 
 En Meta Events Manager, verifica Test Events, deduplicación y diagnósticos antes de activar campañas. La API de Meta no se ha podido validar con credenciales reales en esta entrega; configura una versión vigente de Graph API y verifica aceptación del evento en tu cuenta.
+
+## Google Analytics y TikTok Ads
+
+Añade `GOOGLE_ANALYTICS_ID` y `TIKTOK_PIXEL_ID` en Vercel. Los scripts se cargan únicamente después de que la persona acepte la medición. La web envía vistas de producto, inicio de checkout y compra confirmada. En Google Analytics el evento de compra se llama `purchase`; en TikTok se envía como `CompletePayment`.
+
+La tarjeta de actividad consulta compras reales y pagadas de Stripe de los últimos 30 días. Solo muestra el país y una hora relativa; no expone nombre, correo, referencia ni otro dato del comprador. Con claves de prueba no se muestran avisos de compra.
 
 ## Contenido auténtico: testimonios y marcas
 
@@ -98,7 +107,7 @@ Edita `public/site-settings.json` para configurar valores sin entrar en Vercel:
 
 También puedes crear manualmente estas variables en Vercel → proyecto → Settings → Environment Variables → Production: `EVENT_DAY`, `EVENT_MONTH`, `EVENT_YEAR`, `EVENT_TIME`, `COURSE_PRICE_USD`, `WHATSAPP_GROUP_URL`. Las variables sobrescriben el archivo. **Subir código a GitHub no crea variables en el panel de Vercel.** Después de cambiarlas, ejecuta Redeploy. Elimina `EVENT_DATE` si lo habías configurado para usar el nuevo día/mes/año. Elimina un `EVENT_TIME` antiguo de texto y usa `HH:mm` para activar la conversión internacional.
 
-La hora base es Perú. La web convierte automáticamente a CDMX, Buenos Aires, Santiago, Bogotá, Nueva York/Miami, Los Ángeles y Madrid usando las zonas IANA y la fecha del evento, incluido horario de verano. No representa todos los husos de cada país.
+La hora base es Perú. La web convierte automáticamente a CDMX, Buenos Aires, Santiago, Bogotá, Nueva York/Miami y Los Ángeles usando las zonas IANA y la fecha del evento, incluido horario de verano. No representa todos los husos de cada país.
 
 ## Fotos, diseños y nueve videos
 

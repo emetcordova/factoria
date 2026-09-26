@@ -13,7 +13,9 @@ export function settings(env) {
  if(!Number.isFinite(amount)||amount<=0||amount>=100000||Math.abs(amount*100-Math.round(amount*100))>0.00001)throw Error('invalid_course_price');
  const whatsapp=env.WHATSAPP_GROUP_URL||defaults.whatsappGroupUrl;
  if(!/^https:\/\/chat\.whatsapp\.com\/[a-zA-Z0-9]+$/.test(whatsapp))throw Error('invalid_whatsapp_url');
- return {date, time:startsAt?time+' (Perú)':time||'Horario por confirmar', startsAt, dateOnly, whatsapp, course:{...COURSE,amount:Math.round(amount*100)}};
+ const availableSeats=Number(env.AVAILABLE_SEATS||defaults.availableSeats||0);
+ if(!Number.isInteger(availableSeats)||availableSeats<0||availableSeats>999)throw Error('invalid_available_seats');
+ return {date, time:startsAt?time+' (Perú)':time||'Horario por confirmar', startsAt, dateOnly, whatsapp, availableSeats, course:{...COURSE,amount:Math.round(amount*100)}};
 }
 const json = (data, status = 200) => new Response(JSON.stringify(data), {status, headers: {'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 const clean = (v, max=250) => typeof v === 'string' ? v.slice(0,max) : '';
@@ -62,7 +64,16 @@ export async function handleApi(request,env,fetcher=fetch) {
  const u=new URL(request.url), path=u.pathname;
  try {
   const cfg=settings(env), c=cfg.course;
-  if(path==='/api/config' && request.method==='GET')return json({checkoutEnabled:ready(env),publishableKey:ready(env)?env.STRIPE_PUBLISHABLE_KEY:null,pixelId:/^\d+$/.test(env.META_PIXEL_ID||'')?env.META_PIXEL_ID:null,testMode:!env.STRIPE_SECRET_KEY?.startsWith('sk_live_'),course:{...c,amount:c.amount/100},eventDate:cfg.date,eventTime:cfg.time,eventStartsAt:cfg.startsAt,eventDateISO:cfg.dateOnly,whatsappUrl:cfg.whatsapp});
+  if(path==='/api/config' && request.method==='GET')return json({checkoutEnabled:ready(env),publishableKey:ready(env)?env.STRIPE_PUBLISHABLE_KEY:null,pixelId:/^\d+$/.test(env.META_PIXEL_ID||'')?env.META_PIXEL_ID:null,googleAnalyticsId:/^G-[A-Z0-9]{6,20}$/.test(env.GOOGLE_ANALYTICS_ID||'')?env.GOOGLE_ANALYTICS_ID:null,tiktokPixelId:/^[A-Z0-9]{10,24}$/.test(env.TIKTOK_PIXEL_ID||'')?env.TIKTOK_PIXEL_ID:null,testMode:!env.STRIPE_SECRET_KEY?.startsWith('sk_live_'),course:{...c,amount:c.amount/100},eventDate:cfg.date,eventTime:cfg.time,eventStartsAt:cfg.startsAt,eventDateISO:cfg.dateOnly,whatsappUrl:cfg.whatsapp,availableSeats:cfg.availableSeats});
+  if(path==='/api/recent-activity' && request.method==='GET') {
+   // Only confirmed live purchases are eligible. The response contains no name,
+   // email, session ID or other buyer identifier.
+   if(!ready(env)||!env.STRIPE_SECRET_KEY.startsWith('sk_live_'))return json({purchases:[]});
+   const sessions=await stripe('checkout/sessions?limit=30&status=complete',env,fetcher);
+   const cutoff=Math.floor(Date.now()/1000)-30*24*60*60;
+   const purchases=(sessions.data||[]).filter(s=>isCoursePurchase(s,c)&&Number(s.created)>=cutoff).slice(0,8).map(s=>({countryCode:clean(s.customer_details?.address?.country||s.shipping_details?.address?.country,2).toUpperCase(),created:Number(s.created)})).filter(s=>/^[A-Z]{2}$/.test(s.countryCode)&&Number.isFinite(s.created));
+   return json({purchases});
+  }
   if(path==='/api/checkout' && request.method==='POST') {
    if(!ready(env))return json({error:'Las inscripciones online todavía no están habilitadas. Escríbenos para coordinar tu acceso.'},503);
    if(request.headers.get('origin')!==origin(env))return json({error:'Solicitud no autorizada.'},403);
