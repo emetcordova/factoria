@@ -82,8 +82,9 @@ function initScarcity(c){
  const dialog=document.querySelector('#scarcity-dialog');if(!dialog||!c.availableSeats)return;
  dialog.querySelector('.scarcity-close')?.addEventListener('click',()=>dialog.close());
  dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close()}});
- let seen=false;try{seen=sessionStorage.getItem('emet_scarcity_seen')==='yes'}catch{}
- if(!seen)setTimeout(()=>{if(document.hidden||dialog.open)return;dialog.showModal();try{sessionStorage.setItem('emet_scarcity_seen','yes')}catch{}},60000);
+ const dueAt=Date.now()+60000;
+ const showWhenReady=()=>{const remaining=dueAt-Date.now();if(remaining>0){setTimeout(showWhenReady,remaining);return}if(document.hidden||document.querySelector('dialog[open]')){setTimeout(showWhenReady,3000);return}dialog.showModal()};
+ setTimeout(showWhenReady,60000);
 }
 async function initRecentActivity(){
  const toast=document.querySelector('#activity-toast'),copy=document.querySelector('#activity-copy');if(!toast||!copy)return;
