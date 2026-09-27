@@ -66,6 +66,8 @@ Añade `GOOGLE_ANALYTICS_ID` y `TIKTOK_PIXEL_ID` en Vercel. Los scripts se carga
 
 La tarjeta de actividad consulta compras reales y pagadas de Stripe de los últimos 30 días. Solo muestra el país y una hora relativa; no expone nombre, correo, referencia ni otro dato del comprador. Con claves de prueba no se muestran avisos de compra.
 
+Las compras confirmadas por otros medios se administran en `public/sales-proof.json`. La landing publica únicamente el primer nombre y el país, sin apellidos ni una hora inventada. Estos registros se mezclan de forma aleatoria con la actividad de Stripe y aparecen en intervalos esporádicos. Solo deben incluirse compras reales cuya publicación haya sido autorizada por el responsable del sitio.
+
 ## Contenido auténtico: testimonios y marcas
 
 `public/proof.json` empieza vacío. Su estructura es:

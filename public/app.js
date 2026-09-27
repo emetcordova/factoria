@@ -88,10 +88,14 @@ function initScarcity(c){
 async function initRecentActivity(){
  const toast=document.querySelector('#activity-toast'),copy=document.querySelector('#activity-copy');if(!toast||!copy)return;
  try{
-  const response=await fetch('/api/recent-activity',{cache:'no-store'});if(!response.ok)return;const {purchases=[]}=await response.json();if(!purchases.length)return;
+  const [stripeResponse,manualResponse]=await Promise.allSettled([fetch('/api/recent-activity',{cache:'no-store'}),fetch('/sales-proof.json',{cache:'no-store'})]);
+  const stripe=stripeResponse.status==='fulfilled'&&stripeResponse.value.ok?(await stripeResponse.value.json()).purchases||[]:[];
+  const manual=manualResponse.status==='fulfilled'&&manualResponse.value.ok?(await manualResponse.value.json()).purchases||[]:[];
+  const verified=manual.filter(item=>item?.approved===true&&typeof item.name==='string'&&item.name.length<=40&&typeof item.country==='string'&&item.country.length<=40).map(item=>({name:item.name,country:item.country}));
+  const purchases=[...stripe,...verified].sort(()=>Math.random()-.5);if(!purchases.length)return;
   const countries=typeof Intl.DisplayNames==='function'?new Intl.DisplayNames(['es'],{type:'region'}):null;let index=0,timer;
   const ago=created=>{const minutes=Math.max(1,Math.floor((Date.now()/1000-created)/60));if(minutes<60)return `hace ${minutes} ${minutes===1?'minuto':'minutos'}`;const hours=Math.floor(minutes/60);if(hours<24)return `hace ${hours} ${hours===1?'hora':'horas'}`;const days=Math.floor(hours/24);return `hace ${days} ${days===1?'día':'días'}`};
-  const show=()=>{const item=purchases[index++%purchases.length];const country=countries?.of(item.countryCode)||item.countryCode;copy.textContent=`Una persona de ${country} compró el curso ${ago(item.created)}.`;toast.hidden=false;requestAnimationFrame(()=>toast.classList.add('visible'));clearTimeout(timer);timer=setTimeout(()=>toast.classList.remove('visible'),5200);setTimeout(show,9000+Math.floor(Math.random()*18000))};
+  const show=()=>{const item=purchases[index++%purchases.length];if(item.created){const country=countries?.of(item.countryCode)||item.countryCode;copy.textContent=`Una persona de ${country} compró el curso ${ago(item.created)}.`}else copy.textContent=`${item.name} de ${item.country} compró el curso.`;toast.hidden=false;requestAnimationFrame(()=>toast.classList.add('visible'));clearTimeout(timer);timer=setTimeout(()=>toast.classList.remove('visible'),5200);setTimeout(show,7000+Math.floor(Math.random()*18000))};
   setTimeout(show,3000);
  }catch{}
 }
