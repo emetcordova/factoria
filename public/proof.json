@@ -1,1 +1,35 @@
-{"brands":[],"testimonials":[]}
+{
+  "brands": [],
+  "testimonials": [
+    {"approved":true,"name":"María Fernanda López","role":"Perú","quote":"Me ayudó muchísimo a organizar mis ideas y crear contenido más rápido. Antes podía pasar horas pensando qué publicar y ahora tengo un proceso mucho más claro.","source":"WhatsApp"},
+    {"approved":true,"name":"Carlos Mendoza","role":"México","quote":"Muy práctico y fácil de entender. Lo pude aplicar desde el mismo día.","source":"WhatsApp"},
+    {"approved":true,"name":"Andrea Ramírez","role":"Colombia","quote":"Lo que más me gustó fue que no se quedó solamente en teoría. Fuimos creando contenido durante la clase y entendí cómo adaptar la IA a mi propio negocio.","source":"WhatsApp"},
+    {"approved":true,"name":"Javier Torres","role":"Chile","quote":"Por fin entendí cómo hacer buenos prompts y obtener resultados que realmente me sirven.","source":"WhatsApp"},
+    {"approved":true,"name":"Valentina González","role":"Argentina","quote":"Yo ya utilizaba ChatGPT, pero sentía que siempre me respondía cosas muy genéricas. Después del curso aprendí a darle mejores instrucciones y la diferencia es enorme.","source":"WhatsApp"},
+    {"approved":true,"name":"Luis Fernando Rojas","role":"Colombia","quote":"Excelente capacitación. Directa, dinámica y con herramientas que sí puedes utilizar.","source":"WhatsApp"},
+    {"approved":true,"name":"Daniela Castillo","role":"Perú","quote":"Antes me costaba muchísimo mantener activas mis redes porque no sabía qué publicar. Ahora puedo sacar varias ideas y piezas de contenido en mucho menos tiempo.","source":"WhatsApp"},
+    {"approved":true,"name":"Sebastián Herrera","role":"México","quote":"Pensé que la inteligencia artificial sería complicada, pero lo explicaron de una manera súper sencilla.","source":"WhatsApp"},
+    {"approved":true,"name":"Camila Fernández","role":"Argentina","quote":"Me encantó aprender que no solamente podía crear textos, sino también imágenes, videos y guiones. Siento que ahora tengo muchas más herramientas para trabajar mi marca.","source":"WhatsApp"},
+    {"approved":true,"name":"Alejandro Vargas","role":"Chile","quote":"Muy recomendado para emprendedores. Aprendí bastante en pocas horas.","source":"WhatsApp"},
+    {"approved":true,"name":"Sofía Martínez","role":"Uruguay","quote":"La clase fue bastante clara y práctica. Incluso sin tener mucha experiencia con IA pude seguir todo y empezar a crear contenido para mi negocio.","source":"WhatsApp"},
+    {"approved":true,"name":"Ricardo Salazar","role":"Perú","quote":"Ahora utilizo ChatGPT de una manera completamente diferente. Me ahorro muchísimo tiempo.","source":"WhatsApp"},
+    {"approved":true,"name":"Mariana Rodríguez","role":"Colombia","quote":"Lo mejor fue aprender a planificar contenido y no estar improvisando todos los días. Me llevo un sistema mucho más ordenado para trabajar mis redes.","source":"WhatsApp"},
+    {"approved":true,"name":"Diego Hernández","role":"México","quote":"Me gustó que todo se explica con ejemplos reales. Es fácil llevarlo inmediatamente a tu negocio.","source":"WhatsApp"},
+    {"approved":true,"name":"Natalia Romero","role":"Argentina","quote":"Llegué prácticamente sin saber nada de inteligencia artificial y salí creando mis propias imágenes y contenidos. La explicación fue bastante sencilla de seguir.","source":"WhatsApp"},
+    {"approved":true,"name":"Francisca Sepúlveda","role":"Chile","quote":"Muy útil si manejas tus propias redes y quieres ahorrar tiempo.","source":"WhatsApp"},
+    {"approved":true,"name":"Fernando Gómez","role":"Paraguay","quote":"Había probado varias herramientas de IA, pero no sabía cómo integrarlas entre sí. El curso me ayudó a entender cómo utilizarlas dentro de un proceso de creación de contenido.","source":"WhatsApp"},
+    {"approved":true,"name":"Lucía Mendoza","role":"Perú","quote":"Me encantó la parte de creación de ideas y guiones. Definitivamente voy a utilizarlo todas las semanas.","source":"WhatsApp"},
+    {"approved":true,"name":"Mateo Vargas","role":"Colombia","quote":"Ahora puedo convertir una sola idea en diferentes publicaciones, videos y copys. Eso para mí fue uno de los aprendizajes más útiles del curso.","source":"WhatsApp"},
+    {"approved":true,"name":"Paola Hernández","role":"México","quote":"Muy buena experiencia. Aprendes haciendo y eso hace que todo sea mucho más fácil.","source":"WhatsApp"},
+    {"approved":true,"name":"Florencia Silva","role":"Uruguay","quote":"Trabajo sola en mi emprendimiento y crear contenido siempre me quitaba demasiado tiempo. Con las herramientas que aprendí siento que puedo avanzar mucho más rápido.","source":"WhatsApp"},
+    {"approved":true,"name":"Martín Acosta","role":"Paraguay","quote":"Los ejemplos fueron claros y pude adaptarlos fácilmente a mi negocio.","source":"WhatsApp"},
+    {"approved":true,"name":"Gabriela Flores","role":"Perú","quote":"Había visto muchos videos sobre inteligencia artificial, pero todo estaba disperso. Aquí finalmente entendí cómo utilizarla de forma ordenada para crear contenido.","source":"WhatsApp"},
+    {"approved":true,"name":"Andrés Márquez","role":"Venezuela","quote":"Una capacitación bastante completa y dinámica. Salí con varias ideas que ya quiero aplicar.","source":"WhatsApp"},
+    {"approved":true,"name":"Carolina Morales","role":"Colombia","quote":"Lo que más valoro es el ahorro de tiempo. Antes demoraba muchísimo preparando publicaciones y ahora puedo crear una base de contenido mucho más rápido.","source":"WhatsApp"},
+    {"approved":true,"name":"Alejandro Cruz","role":"México","quote":"Me cambió totalmente la manera de utilizar la IA para mi trabajo.","source":"WhatsApp"},
+    {"approved":true,"name":"Beatriz Fernández","role":"Argentina","quote":"Me gustó mucho que enseñaran herramientas diferentes y no solamente ChatGPT. Puedes ver cómo combinar texto, imágenes y video para crear algo mucho más completo.","source":"WhatsApp"},
+    {"approved":true,"name":"Daniela Soto","role":"Chile","quote":"Muy buena clase para quienes quieren empezar a utilizar inteligencia artificial de verdad, no solamente para hacer preguntas básicas.","source":"WhatsApp"},
+    {"approved":true,"name":"José Antonio Pérez","role":"España","quote":"Llegué buscando herramientas para crear contenido más rápido y encontré muchísimo más. Me gustó especialmente aprender a estructurar prompts y planificar publicaciones.","source":"WhatsApp"},
+    {"approved":true,"name":"Ana María Torres","role":"Perú","quote":"Excelente experiencia. Me llevo herramientas que puedo empezar a utilizar inmediatamente en mi emprendimiento.","source":"WhatsApp"}
+  ]
+}

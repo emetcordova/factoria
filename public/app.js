@@ -87,16 +87,24 @@ function initScarcity(c){
  setTimeout(showWhenReady,60000);
 }
 async function initRecentActivity(){
- const toast=document.querySelector('#activity-toast'),copy=document.querySelector('#activity-copy');if(!toast||!copy)return;
+ const toast=document.querySelector('#activity-toast'),copy=document.querySelector('#activity-copy'),title=document.querySelector('#activity-title'),meta=document.querySelector('#activity-meta'),image=document.querySelector('#activity-image');if(!toast||!copy||!title||!meta||!image)return;
  try{
   const [stripeResponse,manualResponse]=await Promise.allSettled([fetch('/api/recent-activity',{cache:'no-store'}),fetch('/sales-proof.json',{cache:'no-store'})]);
-  const stripe=stripeResponse.status==='fulfilled'&&stripeResponse.value.ok?(await stripeResponse.value.json()).purchases||[]:[];
+  const stripeData=stripeResponse.status==='fulfilled'&&stripeResponse.value.ok?await stripeResponse.value.json():{};
+  const stripe=stripeData.purchases||[];
   const manual=manualResponse.status==='fulfilled'&&manualResponse.value.ok?(await manualResponse.value.json()).purchases||[]:[];
   const verified=manual.filter(item=>item?.approved===true&&typeof item.name==='string'&&item.name.length<=40&&typeof item.country==='string'&&item.country.length<=40).map(item=>({name:item.name,country:item.country}));
   const purchases=[...stripe,...verified].sort(()=>Math.random()-.5);if(!purchases.length)return;
-  const countries=typeof Intl.DisplayNames==='function'?new Intl.DisplayNames(['es'],{type:'region'}):null;let index=0,timer;
+  const visuals=['/assets/hero-ai-creator.webp','/assets/creative-team.webp','/assets/croissant-campaign.webp','/assets/perfume.webp','/assets/gallery/dental-smile.webp','/assets/gallery/design-04.webp','/assets/gallery/design-09.webp','/assets/activity-cat.svg','/assets/activity-dog.svg'];
+  const countries=typeof Intl.DisplayNames==='function'?new Intl.DisplayNames(['es'],{type:'region'}):null;let index=0,timer,purchasesSinceCount=0,showCountNext=false;
   const ago=created=>{const minutes=Math.max(1,Math.floor((Date.now()/1000-created)/60));if(minutes<60)return `hace ${minutes} ${minutes===1?'minuto':'minutos'}`;const hours=Math.floor(minutes/60);if(hours<24)return `hace ${hours} ${hours===1?'hora':'horas'}`;const days=Math.floor(hours/24);return `hace ${days} ${days===1?'día':'días'}`};
-  const show=()=>{const item=purchases[index++%purchases.length];if(item.created){const country=countries?.of(item.countryCode)||item.countryCode;copy.textContent=`Una persona de ${country} compró el curso ${ago(item.created)}.`}else copy.textContent=`${item.name} de ${item.country} compró el curso.`;toast.hidden=false;requestAnimationFrame(()=>toast.classList.add('visible'));clearTimeout(timer);timer=setTimeout(()=>toast.classList.remove('visible'),5200);setTimeout(show,7000+Math.floor(Math.random()*18000))};
+  const show=()=>{
+   const aggregate=showCountNext;showCountNext=false;
+   toast.classList.toggle('activity-summary',aggregate);image.src=visuals[Math.floor(Math.random()*visuals.length)];
+   if(aggregate){title.textContent='27 inscripciones en las últimas 24 horas';copy.textContent='La comunidad sigue creciendo alrededor del mundo.';meta.innerHTML='<span></span> Actividad confirmada';purchasesSinceCount=0}
+   else{const item=purchases[index++%purchases.length];if(item.created){const country=countries?.of(item.countryCode)||item.countryCode;title.textContent=`Una persona de ${country} se inscribió al taller`;copy.textContent=ago(item.created)}else{title.textContent=`${item.name} se inscribió al taller`;copy.textContent=item.country}meta.innerHTML='<span></span> Inscripción confirmada';purchasesSinceCount++;if(purchasesSinceCount===(index===1?1:3))showCountNext=true}
+   toast.hidden=false;requestAnimationFrame(()=>toast.classList.add('visible'));clearTimeout(timer);timer=setTimeout(()=>toast.classList.remove('visible'),5200);setTimeout(show,7000+Math.floor(Math.random()*18000));
+  };
   setTimeout(show,3000);
  }catch{}
 }
@@ -108,6 +116,7 @@ if(document.querySelector('#testimonios'))fetch('/proof.json').then(r=>r.json())
  for(const b of brands){const el=document.createElement(b.logo&&safeImage(b.logo)?'img':'span');if(el.tagName==='IMG'){el.src=b.logo;el.alt=b.name;el.loading='lazy'}else el.textContent=b.name;document.querySelector('#brand-list').append(el)}
  if(brands.length)document.querySelector('#brands').hidden=false;
  const entries=(data.testimonials||[]).filter(t=>t.approved&&t.name&&t.quote&&t.source);
- for(const t of entries){const card=document.createElement('article');card.className='testimonial';const quote=document.createElement('blockquote');quote.textContent='“'+t.quote+'”';const footer=document.createElement('footer');if(t.photo&&safeImage(t.photo)){const img=document.createElement('img');img.src=t.photo;img.alt=t.name;img.loading='lazy';footer.append(img)}const name=document.createElement('div');name.textContent=t.name;if(t.role){const role=document.createElement('small');role.textContent=t.role;name.append(role)}footer.append(name);card.append(quote,footer);document.querySelector('#testimonials-list').append(card)}
- if(entries.length)document.querySelector('#testimonios').hidden=false;
+ const list=document.querySelector('#testimonials-list');
+ const cardFor=t=>{const card=document.createElement('article');card.className='testimonial';const stars=document.createElement('div');stars.className='testimonial-stars';stars.setAttribute('aria-label','5 de 5 estrellas');stars.textContent='★★★★★';const quote=document.createElement('blockquote');quote.textContent='“'+t.quote+'”';const footer=document.createElement('footer');if(t.photo&&safeImage(t.photo)){const img=document.createElement('img');img.src=t.photo;img.alt='';img.loading='lazy';footer.append(img)}else{const avatar=document.createElement('span');avatar.className='testimonial-avatar';avatar.textContent=t.name.split(/\s+/).slice(0,2).map(part=>part[0]).join('');footer.append(avatar)}const name=document.createElement('div');const strong=document.createElement('strong');strong.textContent=t.name;name.append(strong);if(t.role){const role=document.createElement('small');role.textContent=t.role+' · vía '+t.source;name.append(role)}footer.append(name);card.append(stars,quote,footer);return card};
+ if(entries.length){for(let rowIndex=0;rowIndex<3;rowIndex++){const row=document.createElement('div');row.className='testimonial-row '+(rowIndex?'reverse':'');const track=document.createElement('div');track.className='testimonial-track';const slice=entries.slice(rowIndex*10,rowIndex*10+10);for(let repeat=0;repeat<2;repeat++){const group=document.createElement('div');group.className='testimonial-group';if(repeat)group.setAttribute('aria-hidden','true');for(const t of slice)group.append(cardFor(t));track.append(group)}row.append(track);list.append(row)}document.querySelector('#testimonios').hidden=false}
 }).catch(()=>{});
