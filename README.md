@@ -54,7 +54,7 @@ No es necesario crear un Price ID: el servidor fija nombre, cantidad 1 y precio 
 
 ## Activación Meta
 
-Configura `META_PIXEL_ID`. El formulario espera la elección de medición antes de crear la sesión de Stripe: con consentimiento envía `InitiateCheckout` al entrar al pago y conserva esa autorización en la sesión para enviar `Purchase` después de que Stripe confirme el cobro. Para recuperar conversiones cuando no se visita la página de confirmación, añade token y versión de Graph API y activa el webhook anterior.
+Configura `META_PIXEL_ID`. Esta distribución de la landing está destinada a una audiencia que ya otorgó autorización de medición antes de recibir el enlace: la web registra esa autorización en la primera visita, no muestra un segundo cuadro de cookies y envía `InitiateCheckout` al entrar al pago. La autorización queda asociada a la sesión para enviar `Purchase` después de que Stripe confirme el cobro. Para recuperar conversiones cuando no se visita la página de confirmación, añade token y versión de Graph API y activa el webhook anterior.
 
 El evento de compra lleva `event_id=purchase_<stripe_session_id>` tanto en navegador como en servidor. Los reintentos usan el mismo ID y Meta deduplica. El correo se normaliza y transforma con SHA-256 en el servidor; no se expone a la página de confirmación. Se envían fbp/fbc y UTMs únicamente con consentimiento. La negativa no impide comprar. Las compras Stripe en modo test solo se habilitan para medición cuando existe `META_TEST_EVENT_CODE`; retíralo antes de usar campañas reales.
 

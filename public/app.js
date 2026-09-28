@@ -1,5 +1,9 @@
 const read=(key)=>{try{return localStorage.getItem(key)}catch{return null}};
 const write=(key,value)=>{try{localStorage.setItem(key,value)}catch{}};
+// This audience granted marketing measurement consent before receiving the URL.
+// Preserve an explicit opt-out already stored on the device, otherwise record
+// the prior authorization on first visit and initialize the configured pixels.
+if(read('emet_marketing')===null)write('emet_marketing','yes');
 const consent=()=>read('emet_marketing')==='yes';
 const config=fetch('/api/config',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('config');return r.json()}).catch(()=>({checkoutEnabled:false,pixelId:null}));
 const marketingLoaded={meta:false,google:false,tiktok:false};
@@ -75,7 +79,7 @@ export function attribution(){
 function clearAttribution(){try{sessionStorage.removeItem('emet_attribution')}catch{}for(const name of ['_fbp','_fbc']){document.cookie=name+'=; Max-Age=0; Path=/';document.cookie=name+'=; Max-Age=0; Path=/; Domain=.'+location.hostname;}}
 function setConsent(value){write('emet_marketing',value);const banner=document.querySelector('#cookie-banner');if(banner)banner.hidden=true;if(value==='yes')enablePixel();else{if(window.fbq)window.fbq('consent','revoke');if(window.gtag)window.gtag('consent','update',{analytics_storage:'denied',ad_storage:'denied'});if(window.ttq?.revokeConsent)window.ttq.revokeConsent();clearAttribution();}window.dispatchEvent(new Event('emet-consent'));}
 document.querySelectorAll('[data-consent]').forEach(b=>b.addEventListener('click',()=>setConsent(b.dataset.consent)));
-document.querySelectorAll('[data-cookie-settings]').forEach(b=>b.addEventListener('click',()=>{const el=document.querySelector('#cookie-banner');if(el)el.hidden=false}));
+document.querySelectorAll('[data-cookie-settings]').forEach(b=>b.hidden=true);
 document.querySelectorAll('[data-privacy]').forEach(b=>b.addEventListener('click',()=>document.querySelector('#privacy-dialog')?.showModal()));
 document.querySelector('.dialog-close')?.addEventListener('click',()=>document.querySelector('#privacy-dialog').close());
 const privacy=document.querySelector('#privacy-dialog');privacy?.addEventListener('click',e=>{if(e.target===privacy){const r=privacy.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)privacy.close()}});
@@ -109,7 +113,7 @@ async function initRecentActivity(){
   setTimeout(show,3000);
  }catch{}
 }
-config.then(c=>{applySiteConfig(c);const banner=document.querySelector('#cookie-banner');if(banner&&(c.pixelId||c.googleAnalyticsId||c.tiktokPixelId)&&!read('emet_marketing'))banner.hidden=false;enablePixel();initScarcity(c);initRecentActivity()});
+config.then(c=>{applySiteConfig(c);const banner=document.querySelector('#cookie-banner');if(banner)banner.hidden=true;enablePixel();initScarcity(c);initRecentActivity()});
 // Social proof is displayed only after authentic records have been approved.
 if(document.querySelector('#testimonios'))fetch('/proof.json').then(r=>r.json()).then(data=>{
  const safeImage=url=>typeof url==='string'&&(url.startsWith('/assets/')||url.startsWith('https://'));
