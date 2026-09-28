@@ -38,6 +38,12 @@ test('Status confirms only paid sessions; does not expose customer email',async(
  const unpaid=await (await handleApi(request(),env,async()=>fakeResponse({...session,payment_status:'unpaid'}))).json();assert.equal(unpaid.paid,false);
  const paid=await (await handleApi(request(),env,async()=>fakeResponse(session))).json();assert.equal(paid.paid,true);assert.equal(paid.eventId,'purchase_'+session.id);assert.equal(paid.customer_details,undefined);assert.equal(JSON.stringify(paid).includes('Person@'),false);
 });
+test('Test purchases can be measured only when Meta Test Events is configured',async()=>{
+ const request=()=>new Request('https://example.com/api/session?session_id='+session.id);
+ const testSession={...session,livemode:false};
+ const enabled=await (await handleApi(request(),env,async()=>fakeResponse(testSession))).json();assert.equal(enabled.allowTracking,true);
+ const disabled=await (await handleApi(request(),{...env,META_TEST_EVENT_CODE:''},async()=>fakeResponse(testSession))).json();assert.equal(disabled.allowTracking,false);
+});
 test('A different product cannot be reported as a course purchase',async()=>{
  const r=await handleApi(new Request('https://example.com/api/session?session_id='+session.id),env,async()=>fakeResponse({...session,metadata:{course_id:'another_product'}}));assert.equal(r.status,404);
 });

@@ -97,7 +97,8 @@ export async function handleApi(request,env,fetcher=fetch) {
    const id=u.searchParams.get('session_id');if(!/^cs_(test_|live_)?[a-zA-Z0-9]{10,250}$/.test(id||''))return json({error:'Referencia de compra no válida.'},400);
    const session=await stripe('checkout/sessions/'+encodeURIComponent(id),env,fetcher);
    if(session.metadata?.course_id!==c.id)return json({error:'Compra no encontrada.'},404);
-   return json({paid:isCoursePurchase(session,c),status:session.status,paymentStatus:session.payment_status,value:session.amount_total/100,currency:session.currency?.toUpperCase(),eventId:'purchase_'+session.id,allowTracking:session.metadata.marketing_consent==='true' && session.livemode===true});
+   const trackableMode=session.livemode===true||Boolean(env.META_TEST_EVENT_CODE);
+   return json({paid:isCoursePurchase(session,c),status:session.status,paymentStatus:session.payment_status,value:session.amount_total/100,currency:session.currency?.toUpperCase(),eventId:'purchase_'+session.id,allowTracking:session.metadata.marketing_consent==='true'&&trackableMode});
   }
   if(path==='/api/stripe-webhook' && request.method==='POST') {
    if(!env.STRIPE_WEBHOOK_SECRET)return json({error:'Webhook no configurado.'},503);

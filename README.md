@@ -54,9 +54,9 @@ No es necesario crear un Price ID: el servidor fija nombre, cantidad 1 y precio 
 
 ## Activación Meta
 
-Configura `META_PIXEL_ID`. Con consentimiento se activa el Pixel. Para recuperar conversiones cuando no se visita la página de confirmación, añade token y versión de Graph API y activa el webhook anterior.
+Configura `META_PIXEL_ID`. El formulario espera la elección de medición antes de crear la sesión de Stripe: con consentimiento envía `InitiateCheckout` al entrar al pago y conserva esa autorización en la sesión para enviar `Purchase` después de que Stripe confirme el cobro. Para recuperar conversiones cuando no se visita la página de confirmación, añade token y versión de Graph API y activa el webhook anterior.
 
-El evento de compra lleva `event_id=purchase_<stripe_session_id>` tanto en navegador como en servidor. Los reintentos usan el mismo ID y Meta deduplica. El correo se normaliza y transforma con SHA-256 en el servidor; no se expone a la página de confirmación. Se envían fbp/fbc y UTMs únicamente con consentimiento. La negativa no impide comprar. Las compras Stripe en modo test no se envían como compras reales; CAPI de prueba requiere `META_TEST_EVENT_CODE`.
+El evento de compra lleva `event_id=purchase_<stripe_session_id>` tanto en navegador como en servidor. Los reintentos usan el mismo ID y Meta deduplica. El correo se normaliza y transforma con SHA-256 en el servidor; no se expone a la página de confirmación. Se envían fbp/fbc y UTMs únicamente con consentimiento. La negativa no impide comprar. Las compras Stripe en modo test solo se habilitan para medición cuando existe `META_TEST_EVENT_CODE`; retíralo antes de usar campañas reales.
 
 En Meta Events Manager, verifica Test Events, deduplicación y diagnósticos antes de activar campañas. La API de Meta no se ha podido validar con credenciales reales en esta entrega; configura una versión vigente de Graph API y verifica aceptación del evento en tu cuenta.
 

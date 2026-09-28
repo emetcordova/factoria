@@ -1,19 +1,25 @@
-import {configuration,consentAllowed,attribution,track} from './app.js';
+import {configuration,consentAllowed,consentResolved,attribution,track} from './app.js';
 const loading=document.querySelector('#checkout-loading');
 const error=document.querySelector('#checkout-error');
+let activeConfig=null,checkoutTracked=false;
 document.querySelector('#retry-checkout').addEventListener('click',()=>location.reload());
 function loadStripe(){return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://js.stripe.com/dahlia/stripe.js';s.onload=resolve;s.onerror=()=>reject(Error('No se pudo cargar el formulario de pago. Revisa tu conexión e inténtalo nuevamente.'));document.head.append(s)})}
+function waitForConsent(c){if(consentResolved()||!(c.pixelId||c.googleAnalyticsId||c.tiktokPixelId))return Promise.resolve();return new Promise(resolve=>window.addEventListener('emet-consent',resolve,{once:true}))}
+async function trackCheckout(c){if(checkoutTracked||!consentAllowed())return;checkoutTracked=true;let eventID;try{eventID=sessionStorage.getItem('emet_checkout_event_id');if(!eventID){eventID='checkout_'+crypto.randomUUID();sessionStorage.setItem('emet_checkout_event_id',eventID)}}catch{eventID='checkout_'+crypto.randomUUID()}await track('InitiateCheckout',{content_ids:[c.course.id],content_type:'product',content_name:c.course.name,currency:'USD',value:c.course.amount,num_items:1},eventID)}
+window.addEventListener('emet-consent',()=>{if(activeConfig)trackCheckout(activeConfig)});
 async function start(){
  try {
   const [c]=await Promise.all([configuration,loadStripe()]);
+  activeConfig=c;
   if(!c.checkoutEnabled)throw Error('Las inscripciones online todavía no están habilitadas. Escríbenos para coordinar tu acceso al taller.');
   document.querySelector('#test-mode').hidden=!c.testMode;
-  const body={requestId:crypto.randomUUID(),consent:consentAllowed(),...attribution()};
+  await waitForConsent(c);
+  await trackCheckout(c);
   const stripe=window.Stripe(c.publishableKey);
   const checkout=await stripe.createEmbeddedCheckoutPage({fetchClientSecret:async()=>{
+   const body={requestId:crypto.randomUUID(),consent:consentAllowed(),...attribution()};
    const r=await fetch('/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
    const data=await r.json();if(!r.ok)throw Error(data.error||'No se pudo iniciar el pago.');
-   if(!c.testMode)track('InitiateCheckout',{content_ids:[c.course.id],content_type:'product',currency:'USD',value:c.course.amount,num_items:1});
    return data.clientSecret;
   }});
   loading.hidden=true;checkout.mount('#checkout');

@@ -4,6 +4,7 @@ const consent=()=>read('emet_marketing')==='yes';
 const config=fetch('/api/config',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('config');return r.json()}).catch(()=>({checkoutEnabled:false,pixelId:null}));
 const marketingLoaded={meta:false,google:false,tiktok:false};
 export const consentAllowed=consent;
+export const consentResolved=()=>['yes','no'].includes(read('emet_marketing'));
 export const configuration=config;
 function applySiteConfig(c){
  const date=c.eventDate||'Jueves 1 de octubre de 2026', time=c.eventTime||'Horario por confirmar', price=Number(c.course?.amount||19), priceText=`US$${price}`;
