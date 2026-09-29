@@ -75,3 +75,6 @@
 @media(prefers-reduced-motion:reduce){.testimonial-track{animation:none}.testimonial-row{overflow-x:auto}.testimonial-group[aria-hidden=true]{display:none}}
 .activity-summary .activity-avatar{background:#fff}.activity-summary .activity-avatar img{object-fit:contain;padding:4px}
 #cookie-banner,[data-cookie-settings]{display:none!important}
+
+/* Eight evenly sized videos on phones; the pizza stays in the desktop grid. */
+@media(max-width:760px){.video-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.video-grid>:nth-child(-n+6),.video-grid>.is-secondary{grid-column:auto}.video-grid>.is-mobile-hidden{display:none}.video-grid>:last-child:nth-child(odd){aspect-ratio:4/5}}

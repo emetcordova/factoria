@@ -88,11 +88,25 @@
   ],
   "videos": [
     {
-      "src": "/assets/gallery/creation-01.mp4",
-      "poster": "/assets/gallery/creation-01-poster.webp",
-      "title": "Creación con IA · 01",
+      "src": "/assets/gallery/new/creation-2250.mp4",
+      "poster": "/assets/gallery/new/creation-2250-poster.webp",
+      "title": "Veterinario y cachorro",
       "approved": true,
-      "preview": "/assets/gallery/creation-01-preview.mp4"
+      "preview": "/assets/gallery/new/creation-2250-preview.mp4"
+    },
+    {
+      "src": "/assets/gallery/new/creation-2251.mp4",
+      "poster": "/assets/gallery/new/creation-2251-poster.webp",
+      "title": "Pediatra y bebé",
+      "approved": true,
+      "preview": "/assets/gallery/new/creation-2251-preview.mp4"
+    },
+    {
+      "src": "/assets/gallery/new/creation-2253.mp4",
+      "poster": "/assets/gallery/new/creation-2253-poster.webp",
+      "title": "Atención dental",
+      "approved": true,
+      "preview": "/assets/gallery/new/creation-2253-preview.mp4"
     },
     {
       "src": "/assets/gallery/creation-2239-smooth.mp4",
@@ -130,25 +144,12 @@
       "preview": "/assets/gallery/creation-2243-smooth-preview.mp4"
     },
     {
-      "src": "/assets/gallery/creation-02.mp4",
-      "poster": "/assets/gallery/creation-02-poster.webp",
-      "title": "Creación con IA · 07",
+      "src": "/assets/gallery/new/creation-2252.mp4",
+      "poster": "/assets/gallery/new/creation-2252-poster.webp",
+      "title": "Chef preparando pizza",
       "approved": true,
-      "preview": "/assets/gallery/creation-02-preview.mp4"
-    },
-    {
-      "src": "/assets/gallery/creation-03.mp4",
-      "poster": "/assets/gallery/creation-03-poster.webp",
-      "title": "Creación con IA · 08",
-      "approved": true,
-      "preview": "/assets/gallery/creation-03-preview.mp4"
-    },
-    {
-      "src": "/assets/gallery/creation-04.mp4",
-      "poster": "/assets/gallery/creation-04-poster.webp",
-      "title": "Creación con IA · 09",
-      "approved": true,
-      "preview": "/assets/gallery/creation-04-preview.mp4"
+      "preview": "/assets/gallery/new/creation-2252-preview.mp4",
+      "mobileHidden": true
     }
   ]
 }
