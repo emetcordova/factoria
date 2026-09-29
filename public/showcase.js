@@ -73,6 +73,7 @@ async function init(){
  const dialog=document.querySelector('#media-dialog'),content=document.querySelector('#media-content');let trigger=null,oldOverflow='';
  const previews=[];
  const visiblePreviews=new Set();
+ const inViewPreviews=new Set();
  const pendingPlays=new WeakSet();
  function playPreview(video){
   if(document.hidden||dialog.open||!visiblePreviews.has(video)||pendingPlays.has(video)||!video.paused)return;
@@ -87,14 +88,26 @@ async function init(){
    video.parentElement.classList.remove('is-playing');
   }).finally(()=>pendingPlays.delete(video));
  }
- function startPreviews(){visiblePreviews.forEach(playPreview)}
+ function startPreviews(){
+  const limit=matchMedia('(max-width: 760px)').matches?2:3;
+  const selected=new Set([...inViewPreviews].map(video=>{
+   const rect=video.getBoundingClientRect();
+   const visibleHeight=Math.max(0,Math.min(rect.bottom,innerHeight)-Math.max(rect.top,0));
+   return {video,ratio:visibleHeight/Math.max(1,rect.height)};
+  }).filter(item=>item.ratio>0.1).sort((a,b)=>b.ratio-a.ratio).slice(0,limit).map(item=>item.video));
+  for(const video of previews){
+   if(selected.has(video)){visiblePreviews.add(video);playPreview(video)}
+   else{visiblePreviews.delete(video);video.pause()}
+  }
+ }
  function pausePreviews(){previews.forEach(video=>video.pause())}
  const previewObserver='IntersectionObserver'in window?new IntersectionObserver(entries=>{
   for(const entry of entries){
    const video=entry.target.querySelector('video');
-   if(entry.isIntersecting){visiblePreviews.add(video);playPreview(video)}
-   else{visiblePreviews.delete(video);video.pause()}
+   if(entry.isIntersecting)inViewPreviews.add(video);
+   else inViewPreviews.delete(video);
   }
+  startPreviews();
  },{threshold:0.1}):null;
  function registerPreview(button,video){
   previews.push(video);
@@ -104,7 +117,7 @@ async function init(){
   video.addEventListener('pause',()=>button.classList.remove('is-playing'));
   video.addEventListener('error',()=>{button.classList.remove('is-playing');video.dataset.autoplayError='MediaError'});
   if(previewObserver)previewObserver.observe(button);
-  else{visiblePreviews.add(video);playPreview(video)}
+  else{inViewPreviews.add(video);startPreviews()}
  }
  function open(item,video,source){trigger=source;oldOverflow=document.body.style.overflow;document.body.style.overflow='hidden';gallery.classList.add('paused');pausePreviews();content.replaceChildren();const el=document.createElement(video?'video':'img');el.src=item.src;if(video){el.controls=true;el.playsInline=true;el.setAttribute('playsinline','');el.setAttribute('webkit-playsinline','');el.muted=false;el.autoplay=true;el.preload='auto';el.addEventListener('loadedmetadata',()=>{if(el.currentTime!==0)el.currentTime=0},{once:true})}else el.alt=item.title||'Creación con IA';content.append(el);dialog.showModal();if(video)el.play().catch(()=>{})}
  dialog.querySelector('.media-close').addEventListener('click',()=>dialog.close());
@@ -117,5 +130,5 @@ async function init(){
  document.querySelector('#video-description').hidden=true;
  if(!videos.length)document.querySelector('#video-description').textContent='Pronto podrás explorar aquí nueve creaciones en video de la comunidad.';
  
- document.addEventListener('visibilitychange',()=>{if(document.hidden)pausePreviews();else startPreviews()});window.addEventListener('pageshow',startPreviews);document.addEventListener('pointerdown',startPreviews,{once:true,passive:true});document.addEventListener('touchend',startPreviews,{once:true,passive:true});
+ document.addEventListener('visibilitychange',()=>{if(document.hidden)pausePreviews();else startPreviews()});window.addEventListener('pageshow',startPreviews);document.addEventListener('pointerdown',startPreviews,{once:true,passive:true});document.addEventListener('touchend',startPreviews,{once:true,passive:true});let scrollFrame=0;window.addEventListener('scroll',()=>{if(!scrollFrame)scrollFrame=requestAnimationFrame(()=>{scrollFrame=0;startPreviews()})},{passive:true});window.addEventListener('resize',startPreviews);
 }
