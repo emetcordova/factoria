@@ -88,60 +88,68 @@
   ],
   "videos": [
     {
-      "src": "/assets/gallery/new/creation-2250.mp4",
-      "poster": "/assets/gallery/new/creation-2250-poster.webp",
-      "title": "Veterinario y cachorro",
-      "approved": true,
-      "preview": "/assets/gallery/new/creation-2250-preview.mp4"
-    },
-    {
-      "src": "/assets/gallery/new/creation-2251.mp4",
-      "poster": "/assets/gallery/new/creation-2251-poster.webp",
-      "title": "Pediatra y bebé",
-      "approved": true,
-      "preview": "/assets/gallery/new/creation-2251-preview.mp4"
-    },
-    {
-      "src": "/assets/gallery/new/creation-2253.mp4",
-      "poster": "/assets/gallery/new/creation-2253-poster.webp",
-      "title": "Atención dental",
-      "approved": true,
-      "preview": "/assets/gallery/new/creation-2253-preview.mp4"
-    },
-    {
-      "src": "/assets/gallery/creation-2239-smooth.mp4",
-      "poster": "/assets/gallery/creation-2239-poster.webp",
-      "title": "Creación con IA · 02",
-      "approved": true,
-      "preview": "/assets/gallery/creation-2239-smooth-preview.mp4"
-    },
-    {
-      "src": "/assets/gallery/creation-2240-smooth.mp4",
-      "poster": "/assets/gallery/creation-2240-poster.webp",
-      "title": "Creación con IA · 03",
-      "approved": true,
-      "preview": "/assets/gallery/creation-2240-smooth-preview.mp4"
-    },
-    {
-      "src": "/assets/gallery/creation-2241-smooth.mp4",
-      "poster": "/assets/gallery/creation-2241-poster.webp",
-      "title": "Creación con IA · 04",
-      "approved": true,
-      "preview": "/assets/gallery/creation-2241-smooth-preview.mp4"
-    },
-    {
       "src": "/assets/gallery/creation-2242-smooth.mp4",
       "poster": "/assets/gallery/creation-2242-poster.webp",
       "title": "Creación con IA · 05",
       "approved": true,
-      "preview": "/assets/gallery/creation-2242-smooth-preview.mp4"
+      "preview": "/assets/gallery/creation-2242-smooth-preview.mp4",
+      "mobileOrder": 1
     },
     {
       "src": "/assets/gallery/creation-2243-smooth.mp4",
       "poster": "/assets/gallery/creation-2243-poster.webp",
       "title": "Creación con IA · 06",
       "approved": true,
-      "preview": "/assets/gallery/creation-2243-smooth-preview.mp4"
+      "preview": "/assets/gallery/creation-2243-smooth-preview.mp4",
+      "mobileOrder": 4
+    },
+    {
+      "src": "/assets/gallery/new/creation-2253.mp4",
+      "poster": "/assets/gallery/new/creation-2253-poster.webp",
+      "title": "Atención dental",
+      "approved": true,
+      "preview": "/assets/gallery/new/creation-2253-preview.mp4",
+      "mobileOrder": 2
+    },
+    {
+      "src": "/assets/gallery/new/creation-2251.mp4",
+      "poster": "/assets/gallery/new/creation-2251-poster.webp",
+      "title": "Pediatra y bebé",
+      "approved": true,
+      "preview": "/assets/gallery/new/creation-2251-preview.mp4",
+      "mobileOrder": 3
+    },
+    {
+      "src": "/assets/gallery/creation-2240-smooth.mp4",
+      "poster": "/assets/gallery/creation-2240-poster.webp",
+      "title": "Creación con IA · 03",
+      "approved": true,
+      "preview": "/assets/gallery/creation-2240-smooth-preview.mp4",
+      "mobileOrder": 5
+    },
+    {
+      "src": "/assets/gallery/creation-2239-smooth.mp4",
+      "poster": "/assets/gallery/creation-2239-poster.webp",
+      "title": "Creación con IA · 02",
+      "approved": true,
+      "preview": "/assets/gallery/creation-2239-smooth-preview.mp4",
+      "mobileOrder": 7
+    },
+    {
+      "src": "/assets/gallery/creation-2241-smooth.mp4",
+      "poster": "/assets/gallery/creation-2241-poster.webp",
+      "title": "Creación con IA · 04",
+      "approved": true,
+      "preview": "/assets/gallery/creation-2241-smooth-preview.mp4",
+      "mobileOrder": 8
+    },
+    {
+      "src": "/assets/gallery/new/creation-2250.mp4",
+      "poster": "/assets/gallery/new/creation-2250-poster.webp",
+      "title": "Veterinario y cachorro",
+      "approved": true,
+      "preview": "/assets/gallery/new/creation-2250-preview.mp4",
+      "mobileOrder": 6
     },
     {
       "src": "/assets/gallery/new/creation-2252.mp4",
