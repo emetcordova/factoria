@@ -97,12 +97,23 @@ export async function handleApi(request,env,fetcher=fetch) {
    const id=u.searchParams.get('session_id');if(!/^cs_(test_|live_)?[a-zA-Z0-9]{10,250}$/.test(id||''))return json({error:'Referencia de compra no válida.'},400);
    const session=await stripe('checkout/sessions/'+encodeURIComponent(id),env,fetcher);
    if(session.metadata?.course_id!==c.id)return json({error:'Compra no encontrada.'},404);
+   const paid=isCoursePurchase(session,c);
    const trackableMode=session.livemode===true||Boolean(env.META_TEST_EVENT_CODE);
-   return json({paid:isCoursePurchase(session,c),status:session.status,paymentStatus:session.payment_status,value:session.amount_total/100,currency:session.currency?.toUpperCase(),eventId:'purchase_'+session.id,allowTracking:session.metadata.marketing_consent==='true'&&trackableMode});
+   let serverDelivery='not_attempted';
+   if(paid&&session.metadata.marketing_consent==='true'&&trackableMode){
+    try{
+     serverDelivery=await sendPurchase(session,{created:Number(session.created)||Math.floor(Date.now()/1000),livemode:session.livemode===true},env,fetcher,c);
+    }catch{
+     // Do not break the confirmation page if Meta is unavailable. The browser Pixel
+     // can still report the same deterministic event_id, and the Stripe webhook can retry.
+     serverDelivery='failed';
+    }
+   }
+   return json({paid,status:session.status,paymentStatus:session.payment_status,value:session.amount_total/100,currency:session.currency?.toUpperCase(),eventId:'purchase_'+session.id,allowTracking:session.metadata.marketing_consent==='true'&&trackableMode,serverDelivery});
   }
   if(path==='/api/stripe-webhook' && request.method==='POST') {
    if(!env.STRIPE_WEBHOOK_SECRET)return json({error:'Webhook no configurado.'},503);
-   const raw=await request.text();if(raw.length>1000000)return json({error:'Payload too large.'},413);
+   const raw=await request.text();if(raw.length>1000000)return json({error:'Payload too large'},413);
    if(!await verifySignature(raw,request.headers.get('stripe-signature'),env.STRIPE_WEBHOOK_SECRET))return json({error:'Invalid signature.'},400);
    const event=JSON.parse(raw);
    if(['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type) && isCoursePurchase(event.data?.object,c)) {
