@@ -124,6 +124,6 @@ export async function handleApi(request,env,fetcher=fetch) {
    return json({received:true});
   }
   return json({error:'Ruta no encontrada.'},404);
- } catch { return json({error:'No pudimos completar la solicitud. Inténtalo nuevamente en unos minutos.'},502); }
+ } catch(error) { const safeErrors=['invalid_event_date','invalid_course_price','invalid_whatsapp_url','invalid_available_seats']; if(path==='/api/config' && safeErrors.includes(error.message))return json({error:error.message},502); return json({error:'No pudimos completar la solicitud. Inténtalo nuevamente en unos minutos.'},502); }
 }
 
