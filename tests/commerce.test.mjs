@@ -23,6 +23,15 @@ test('Configuration exposes only validated public analytics IDs and inventory',a
  assert.equal(invalid.googleAnalyticsId,null);assert.equal(invalid.tiktokPixelId,null);
 });
 test('Checkout rejects a foreign origin',async()=>assert.equal((await handleApi(req({},'https://evil.example'),env,never)).status,403));
+test('Checkout uses its HTTPS deployment origin when SITE_URL is absent or stale',async()=>{
+ const changed={...env,SITE_URL:'https://old.example'};
+ let params;
+ const r=await handleApi(new Request('https://new.example/api/checkout',{method:'POST',headers:{origin:'https://new.example','Content-Type':'application/json'},body:JSON.stringify({requestId:'abcdefghijklmnopqrstuvwx'})}),changed,async(url,o)=>{params=new URLSearchParams(o.body);return fakeResponse({client_secret:'secret',id:session.id})});
+ assert.equal(r.status,200);
+ assert.match(params.get('return_url'),/^https:\/\/new\.example\/gracias\?/);
+ const cfg=await (await handleApi(new Request('https://new.example/api/config'),changed,never)).json();
+ assert.equal(cfg.checkoutEnabled,true);
+});
 test('Checkout price, currency, quantity and redirect are fixed server-side',async()=>{
  let body,headers;const r=await handleApi(req({requestId:'abcdefghijklmnopqrstuvwx',amount:1,currency:'pen',return_url:'https://evil.example',quantity:100,consent:false}),env,async(url,o)=>{assert.equal(url,'https://api.stripe.com/v1/checkout/sessions');body=new URLSearchParams(o.body);headers=o.headers;return fakeResponse({client_secret:'secret',id:session.id})});
  assert.equal(r.status,200);assert.equal(body.get('line_items[0][price_data][unit_amount]'),'1900');assert.equal(body.get('line_items[0][price_data][currency]'),'usd');assert.equal(body.get('line_items[0][quantity]'),'1');assert.match(body.get('return_url'),/^https:\/\/example.com\/gracias\?/);assert.equal(body.get('metadata[marketing_consent]'),'false');assert.equal(headers['Idempotency-Key'],'emet-abcdefghijklmnopqrstuvwx');assert.equal(body.get('ui_mode'),'embedded_page');
@@ -84,3 +93,4 @@ test('Recent activity contains only anonymous, recent, paid live purchases',asyn
  const data=await r.json();assert.deepEqual(data.purchases,[{countryCode:'PY',created}]);assert.equal(JSON.stringify(data).includes('Jorge'),false);assert.equal(JSON.stringify(data).includes('@'),false);assert.equal(JSON.stringify(data).includes(session.id),false);
  const testMode=await (await handleApi(new Request('https://example.com/api/recent-activity'),env,never)).json();assert.deepEqual(testMode.purchases,[]);
 });
+
