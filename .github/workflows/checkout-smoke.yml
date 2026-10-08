@@ -29,3 +29,25 @@ jobs:
           if not config.get("checkoutEnabled"):
               raise SystemExit("Checkout is disabled on the production URL")
           PY
+      - name: Create an unpaid Stripe Checkout session
+        shell: bash
+        run: |
+          id=$(python3 -c 'import uuid; print(uuid.uuid4())')
+          status=$(curl --connect-timeout 10 --max-time 30 -sS -o session.json -w '%{http_code}' \
+            -X POST https://factoria-two.vercel.app/api/checkout \
+            -H 'Origin: https://factoria-two.vercel.app' \
+            -H 'Content-Type: application/json' \
+            -d "{\"requestId\":\"$id\",\"consent\":false}")
+          echo "Checkout session HTTP status: $status"
+          if [ "$status" != "200" ]; then
+            head -c 300 session.json
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json
+          with open("session.json") as f:
+              session = json.load(f)
+          assert isinstance(session.get("clientSecret"), str) and session["clientSecret"]
+          assert isinstance(session.get("sessionId"), str) and session["sessionId"].startswith("cs_live_")
+          print("Stripe live Checkout session created without payment")
+          PY
