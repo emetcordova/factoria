@@ -1,6 +1,13 @@
 export const COURSE = { id: 'emet-contenido-ia-2026-10-01', name: 'Contenido en minutos con IA — Emet', amount: 1900, currency: 'usd' };
 const API_VERSION = '2026-08-26.dahlia';
 import defaults from '../public/site-settings.json' with {type: 'json'};
+function whatsappInvite(value) {
+ try {
+  const url=new URL(String(value||'').trim());
+  const code=url.pathname.match(/^\/([a-zA-Z0-9]+)\/?$/)?.[1];
+  return url.protocol==='https:'&&url.hostname==='chat.whatsapp.com'&&code?'https://chat.whatsapp.com/'+code:null;
+ } catch { return null; }
+}
 export function settings(env) {
  const day=Number(env.EVENT_DAY||defaults.event.day), month=Number(env.EVENT_MONTH||defaults.event.month), year=Number(env.EVENT_YEAR||defaults.event.year);
  const dateOnly=`${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
@@ -11,8 +18,8 @@ export function settings(env) {
  const startsAt=/^([01]\d|2[0-3]):[0-5]\d$/.test(time)?`${dateOnly}T${time}:00-05:00`:null;
  const amount=Number(env.COURSE_PRICE_USD||defaults.priceUSD);
  if(!Number.isFinite(amount)||amount<=0||amount>=100000||Math.abs(amount*100-Math.round(amount*100))>0.00001)throw Error('invalid_course_price');
- const whatsapp=env.WHATSAPP_GROUP_URL||defaults.whatsappGroupUrl;
- if(!/^https:\/\/chat\.whatsapp\.com\/[a-zA-Z0-9]+$/.test(whatsapp))throw Error('invalid_whatsapp_url');
+ // An optional invitation URL must not prevent the payment configuration from loading.
+ const whatsapp=whatsappInvite(env.WHATSAPP_GROUP_URL)||whatsappInvite(defaults.whatsappGroupUrl);
  const availableSeats=Number(env.AVAILABLE_SEATS||defaults.availableSeats||0);
  if(!Number.isInteger(availableSeats)||availableSeats<0||availableSeats>999)throw Error('invalid_available_seats');
  return {date, time:startsAt?time+' (Perú)':time||'Horario por confirmar', startsAt, dateOnly, whatsapp, availableSeats, course:{...COURSE,amount:Math.round(amount*100)}};
