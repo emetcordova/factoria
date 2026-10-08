@@ -19,8 +19,8 @@ export function settings(env) {
 }
 const json = (data, status = 200) => new Response(JSON.stringify(data), {status, headers: {'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 const clean = (v, max=250) => typeof v === 'string' ? v.slice(0,max) : '';
-function origin(env) { try { const u = new URL(env.SITE_URL || ''); return u.protocol === 'https:' ? u.origin : null; } catch { return null; } }
-function ready(env) { return Boolean(origin(env) && /^sk_(test|live)_/.test(env.STRIPE_SECRET_KEY||'') && /^pk_(test|live)_/.test(env.STRIPE_PUBLISHABLE_KEY||'') && env.STRIPE_SECRET_KEY.split('_')[1] === env.STRIPE_PUBLISHABLE_KEY.split('_')[1]); }
+function origin(request) { const u = new URL(request.url); return u.protocol === 'https:' ? u.origin : null; }
+function ready(env) { return Boolean( /^sk_(test|live)_/.test(env.STRIPE_SECRET_KEY||'') && /^pk_(test|live)_/.test(env.STRIPE_PUBLISHABLE_KEY||'') && env.STRIPE_SECRET_KEY.split('_')[1] === env.STRIPE_PUBLISHABLE_KEY.split('_')[1]); }
 async function stripe(path,env,fetcher,options={}) {
  const response = await fetcher('https://api.stripe.com/v1/'+path,{...options,headers:{Authorization:'Bearer '+env.STRIPE_SECRET_KEY,'Stripe-Version':API_VERSION,...options.headers}});
  const data = await response.json();
@@ -42,7 +42,7 @@ export async function verifySignature(raw,header,secret,now=Date.now()) {
 }
 async function sha256(value) {return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))].map(x=>x.toString(16).padStart(2,'0')).join('');}
 export function isCoursePurchase(s,c=COURSE) {return s?.metadata?.course_id===c.id && s.payment_status==='paid' && s.amount_total===c.amount && s.currency===c.currency && s.mode==='payment';}
-export async function sendPurchase(s,event,env,fetcher,c=COURSE) {
+export async function sendPurchase(s,event,env,fetcher,c=COURSE,siteOrigin) {
  if(s.metadata.marketing_consent!=='true')return 'no_consent';
  if(!env.META_ACCESS_TOKEN)return 'not_configured';
  if(!/^\d+$/.test(env.META_PIXEL_ID||'') || !env.META_ACCESS_TOKEN || !/^v\d+\.\d+$/.test(env.META_GRAPH_VERSION||''))throw Error('meta_not_configured');
@@ -53,7 +53,7 @@ export async function sendPurchase(s,event,env,fetcher,c=COURSE) {
  if(email)user.em=[await sha256(email)];
  for(const name of ['fbp','fbc'])if(s.metadata[name])user[name]=s.metadata[name];
  if(s.metadata.client_user_agent)user.client_user_agent=s.metadata.client_user_agent;
- const payload={data:[{event_name:'Purchase',event_time:event.created,event_id:'purchase_'+s.id,action_source:'website',event_source_url:origin(env)+'/checkout',user_data:user,custom_data:{currency:c.currency.toUpperCase(),value:s.amount_total/100,content_ids:[c.id],content_type:'product',num_items:1}}]};
+ const payload={data:[{event_name:'Purchase',event_time:event.created,event_id:'purchase_'+s.id,action_source:'website',event_source_url:siteOrigin+'/checkout',user_data:user,custom_data:{currency:c.currency.toUpperCase(),value:s.amount_total/100,content_ids:[c.id],content_type:'product',num_items:1}}]};
  if(env.META_TEST_EVENT_CODE)payload.test_event_code=env.META_TEST_EVENT_CODE;
  const r=await fetcher(`https://graph.facebook.com/${env.META_GRAPH_VERSION}/${env.META_PIXEL_ID}/events`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+env.META_ACCESS_TOKEN},body:JSON.stringify(payload)});
  if(!r.ok)throw Error('meta_delivery_failed');
@@ -61,10 +61,11 @@ export async function sendPurchase(s,event,env,fetcher,c=COURSE) {
  return 'sent';
 }
 export async function handleApi(request,env,fetcher=fetch) {
- const u=new URL(request.url), path=u.pathname;
+ const u=new URL(request.url), path=u.pathname, siteOrigin=origin(request);
+ const analyticsId=env.GOOGLE_ANALYTICS_ID===undefined?'G-ZCY5PSC64X':env.GOOGLE_ANALYTICS_ID;
  try {
   const cfg=settings(env), c=cfg.course;
-  if(path==='/api/config' && request.method==='GET')return json({checkoutEnabled:ready(env),publishableKey:ready(env)?env.STRIPE_PUBLISHABLE_KEY:null,pixelId:/^\d+$/.test(env.META_PIXEL_ID||'')?env.META_PIXEL_ID:null,googleAnalyticsId:'G-ZCY5PSC64X',tiktokPixelId:/^[A-Z0-9]{10,24}$/.test(env.TIKTOK_PIXEL_ID||'')?env.TIKTOK_PIXEL_ID:null,testMode:!env.STRIPE_SECRET_KEY?.startsWith('sk_live_'),course:{...c,amount:c.amount/100},eventDate:cfg.date,eventTime:cfg.time,eventStartsAt:cfg.startsAt,eventDateISO:cfg.dateOnly,whatsappUrl:cfg.whatsapp,availableSeats:cfg.availableSeats});
+  if(path==='/api/config' && request.method==='GET')return json({checkoutEnabled:ready(env)&&Boolean(siteOrigin),publishableKey:ready(env)&&siteOrigin?env.STRIPE_PUBLISHABLE_KEY:null,pixelId:/^\d+$/.test(env.META_PIXEL_ID||'')?env.META_PIXEL_ID:null,googleAnalyticsId:/^G-[A-Z0-9]+$/.test(analyticsId)?analyticsId:null,tiktokPixelId:/^[A-Z0-9]{10,24}$/.test(env.TIKTOK_PIXEL_ID||'')?env.TIKTOK_PIXEL_ID:null,testMode:!env.STRIPE_SECRET_KEY?.startsWith('sk_live_'),course:{...c,amount:c.amount/100},eventDate:cfg.date,eventTime:cfg.time,eventStartsAt:cfg.startsAt,eventDateISO:cfg.dateOnly,whatsappUrl:cfg.whatsapp,availableSeats:cfg.availableSeats});
   if(path==='/api/recent-activity' && request.method==='GET') {
    // Only confirmed live purchases are eligible. The response contains no name,
    // email, session ID or other buyer identifier.
@@ -75,13 +76,13 @@ export async function handleApi(request,env,fetcher=fetch) {
    return json({purchases});
   }
   if(path==='/api/checkout' && request.method==='POST') {
-   if(!ready(env))return json({error:'Las inscripciones online todavía no están habilitadas. Escríbenos para coordinar tu acceso.'},503);
-   if(request.headers.get('origin')!==origin(env))return json({error:'Solicitud no autorizada.'},403);
+   if(!ready(env)||!siteOrigin)return json({error:'Las inscripciones online todavía no están habilitadas. Escríbenos para coordinar tu acceso.'},503);
+   if(request.headers.get('origin')!==siteOrigin)return json({error:'Solicitud no autorizada.'},403);
    if(!request.headers.get('content-type')?.startsWith('application/json'))return json({error:'Formato no válido.'},415);
    const raw=await request.text();if(raw.length>8192)return json({error:'Solicitud demasiado grande.'},413);
    let body;try{body=JSON.parse(raw)}catch{return json({error:'Solicitud no válida.'},400)}
    if(!body || typeof body!=='object' || !/^[a-zA-Z0-9-]{20,80}$/.test(body.requestId||''))return json({error:'Recarga la página e inténtalo nuevamente.'},400);
-   const params=new URLSearchParams({ui_mode:'embedded_page',mode:'payment',locale:'es',return_url:origin(env)+'/gracias?session_id={CHECKOUT_SESSION_ID}',
+   const params=new URLSearchParams({ui_mode:'embedded_page',mode:'payment',locale:'es',return_url:siteOrigin+'/gracias?session_id={CHECKOUT_SESSION_ID}',
     'line_items[0][price_data][currency]':c.currency,'line_items[0][price_data][unit_amount]':String(c.amount),'line_items[0][price_data][product_data][name]':c.name,'line_items[0][quantity]':'1',
     'metadata[course_id]':c.id,'metadata[marketing_consent]':String(body.consent===true),'payment_intent_data[metadata][course_id]':c.id});
    if(body.consent===true) {
@@ -93,7 +94,7 @@ export async function handleApi(request,env,fetcher=fetch) {
    return json({clientSecret:session.client_secret,sessionId:session.id});
   }
   if(path==='/api/session' && request.method==='GET') {
-   if(!ready(env))return json({error:'No podemos verificar el pago en este momento.'},503);
+   if(!ready(env)||!siteOrigin)return json({error:'No podemos verificar el pago en este momento.'},503);
    const id=u.searchParams.get('session_id');if(!/^cs_(test_|live_)?[a-zA-Z0-9]{10,250}$/.test(id||''))return json({error:'Referencia de compra no válida.'},400);
    const session=await stripe('checkout/sessions/'+encodeURIComponent(id),env,fetcher);
    if(session.metadata?.course_id!==c.id)return json({error:'Compra no encontrada.'},404);
@@ -102,7 +103,7 @@ export async function handleApi(request,env,fetcher=fetch) {
    let serverDelivery='not_attempted';
    if(paid&&session.metadata.marketing_consent==='true'&&trackableMode){
     try{
-     serverDelivery=await sendPurchase(session,{created:Number(session.created)||Math.floor(Date.now()/1000),livemode:session.livemode===true},env,fetcher,c);
+     serverDelivery=await sendPurchase(session,{created:Number(session.created)||Math.floor(Date.now()/1000),livemode:session.livemode===true},env,fetcher,c,siteOrigin);
     }catch{
      // Do not break the confirmation page if Meta is unavailable. The browser Pixel
      // can still report the same deterministic event_id, and the Stripe webhook can retry.
@@ -118,10 +119,11 @@ export async function handleApi(request,env,fetcher=fetch) {
    const event=JSON.parse(raw);
    if(['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type) && isCoursePurchase(event.data?.object,c)) {
     // A non-2xx response on delivery failure makes Stripe retry; deterministic event_id deduplicates retries and Pixel.
-    const delivery=await sendPurchase(event.data.object,event,env,fetcher,c);return json({received:true,delivery});
+    const delivery=await sendPurchase(event.data.object,event,env,fetcher,c,siteOrigin);return json({received:true,delivery});
    }
    return json({received:true});
   }
   return json({error:'Ruta no encontrada.'},404);
  } catch { return json({error:'No pudimos completar la solicitud. Inténtalo nuevamente en unos minutos.'},502); }
 }
+
