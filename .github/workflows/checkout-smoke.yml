@@ -1,0 +1,31 @@
+name: Checkout production smoke test
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  checkout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check public Stripe configuration
+        shell: bash
+        run: |
+          status=$(curl --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 25 -sS -o config.json -w '%{http_code}' https://factoria-two.vercel.app/api/config)
+          echo "HTTP status: $status"
+          if [ "$status" != "200" ]; then
+            head -c 300 config.json
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json
+          with open("config.json") as f:
+              config = json.load(f)
+          print("Checkout enabled:", config.get("checkoutEnabled"))
+          print("Stripe test mode:", config.get("testMode"))
+          print("Price:", config.get("course", {}).get("amount"))
+          if not config.get("checkoutEnabled"):
+              raise SystemExit("Checkout is disabled on the production URL")
+          PY
