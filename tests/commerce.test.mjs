@@ -23,6 +23,14 @@ test('Configuration exposes only validated public analytics IDs and inventory',a
  assert.equal(invalid.googleAnalyticsId,null);assert.equal(invalid.tiktokPixelId,null);
 });
 test('Checkout rejects a foreign origin',async()=>assert.equal((await handleApi(req({},'https://evil.example'),env,never)).status,403));
+test('Invalid optional WhatsApp override does not disable Stripe checkout',async()=>{
+ const changed={...env,WHATSAPP_GROUP_URL:'invalid link'};
+ const data=await (await handleApi(new Request('https://example.com/api/config'),changed,never)).json();
+ assert.equal(data.checkoutEnabled,true);
+ assert.match(data.whatsappUrl,/^https:\/\/chat\.whatsapp\.com\/[a-zA-Z0-9]+$/);
+ const withTracking=await (await handleApi(new Request('https://example.com/api/config'),{...env,WHATSAPP_GROUP_URL:'https://chat.whatsapp.com/Example123?mode=invite'},never)).json();
+ assert.equal(withTracking.whatsappUrl,'https://chat.whatsapp.com/Example123');
+});
 test('Checkout uses its HTTPS deployment origin when SITE_URL is absent or stale',async()=>{
  const changed={...env,SITE_URL:'https://old.example'};
  let params;
