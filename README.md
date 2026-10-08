@@ -8,7 +8,7 @@ Landing clara en blanco, fucsia, violeta y azul. Taller en vivo por Zoom, 1 de o
 - Stripe Embedded Checkout implementado con sesión creada en servidor. **Faltan credenciales y una compra de prueba real para activarlo y validarlo con tu cuenta.** Sin credenciales, la página informa que las inscripciones online no están habilitadas y ofrece contacto; nunca simula un pago.
 - Meta Pixel configurable: PageView, ViewContent, InitiateCheckout y Purchase. Purchase solo se envía cuando el servidor confirma `payment_status=paid`, el curso correcto, USD y 1900 centavos.
 - Conversions API opcional vía webhook firmado de Stripe; usa el mismo `event_id` que el Pixel para deduplicación. Stripe reintenta si Meta falla. El consentimiento y los bloqueadores pueden limitar la medición; no se promete atribución del 100%.
-- Vercel preparado, **aún no desplegado allí**. La publicación actual sigue en Sites.
+- Vercel se despliega desde la rama `main` de este repositorio.
 - Testimonios y marcas están preparados en `public/proof.json` y ocultos hasta recibir contenido auténtico aprobado. No hay reseñas, nombres, resultados ni clientes inventados.
 - El horario y la duración de las asesorías incluidas deben confirmarse por el organizador. El acceso a aula y WhatsApp se coordina manualmente después del pago; este proyecto no automatiza altas ni correos.
 
@@ -17,7 +17,7 @@ Landing clara en blanco, fucsia, violeta y azul. Taller en vivo por Zoom, 1 de o
 1. Sube este proyecto a un repositorio de tu cuenta GitHub e impórtalo en Vercel.
 2. Usa el directorio raíz, framework **Other**, Node.js 22 o superior. `vercel.json` define build (`npm run build`), salida (`public`) y las rutas `/checkout` y `/gracias`. Las funciones están en `api/[...path].js`.
 3. Configura las variables siguientes en **Settings → Environment Variables**. Copia los nombres de `.env.example`; no subas claves al repositorio ni las escribas en HTML/JavaScript público.
-4. Despliega. Establece `SITE_URL` en el origen HTTPS exacto definitivo (sin rutas), por ejemplo `https://tu-dominio.com`. Las sesiones y el control de origen se limitan a ese dominio. Los previews de Vercel necesitan su propia configuración si se quieren probar pagos allí.
+4. Despliega. El checkout utiliza el origen HTTPS de la solicitud para la URL de retorno y comprueba que el navegador envíe el mismo origen. Así funciona con el dominio de producción y sus previews sin cambiar una variable de dominio.
 5. Configura Stripe y Meta como se indica abajo y prueba antes de vender.
 
 El proyecto no requiere dependencias de npm externas. La compilación produce también un Worker para Sites con los mismos archivos y lógica; eso no cambia la salida de Vercel.
@@ -26,7 +26,6 @@ El proyecto no requiere dependencias de npm externas. La compilación produce ta
 
 | Variable | Uso |
 |---|---|
-| `SITE_URL` | Origen HTTPS definitivo. Obligatorio para habilitar checkout. |
 | `EVENT_DATE` | Fecha visible del taller, por ejemplo `Jueves 1 de octubre de 2026`. |
 | `EVENT_TIME` | Hora visible del taller, por ejemplo `8:00 p. m. (hora Perú)`. |
 | `COURSE_PRICE_USD` | Precio entero en dólares; el servidor lo aplica al Checkout. |
@@ -107,7 +106,7 @@ Edita `public/site-settings.json` para configurar valores sin entrar en Vercel:
 - `priceUSD`: precio en dólares, admite hasta dos decimales.
 - `whatsappGroupUrl`: enlace del grupo después del pago.
 
-También puedes crear manualmente estas variables en Vercel → proyecto → Settings → Environment Variables → Production: `EVENT_DAY`, `EVENT_MONTH`, `EVENT_YEAR`, `EVENT_TIME`, `COURSE_PRICE_USD`, `WHATSAPP_GROUP_URL`. Las variables sobrescriben el archivo. **Subir código a GitHub no crea variables en el panel de Vercel.** Después de cambiarlas, ejecuta Redeploy. Elimina `EVENT_DATE` si lo habías configurado para usar el nuevo día/mes/año. Elimina un `EVENT_TIME` antiguo de texto y usa `HH:mm` para activar la conversión internacional.
+También puedes crear manualmente estas variables en Vercel → proyecto → Settings → Environment Variables → Production: `EVENT_DAY`, `EVENT_MONTH`, `EVENT_YEAR`, `EVENT_TIME`, `COURSE_PRICE_USD`, `WHATSAPP_GROUP_URL`. Las variables sobrescriben el archivo. **Subir código a GitHub no crea variables en el panel de Vercel.** Las claves `STRIPE_SECRET_KEY` y `STRIPE_PUBLISHABLE_KEY` del mismo modo (test o live) son obligatorias para habilitar el pago. Después de cambiarlas, ejecuta Redeploy. Elimina `EVENT_DATE` si lo habías configurado para usar el nuevo día/mes/año. Elimina un `EVENT_TIME` antiguo de texto y usa `HH:mm` para activar la conversión internacional.
 
 La hora base es Perú. La web convierte automáticamente a CDMX, Buenos Aires, Santiago, Bogotá, Nueva York/Miami y Los Ángeles usando las zonas IANA y la fecha del evento, incluido horario de verano. No representa todos los husos de cada país.
 
