@@ -6,7 +6,9 @@ export default async function handler(req,res) {
  const headers=new Headers();for(const [k,v] of Object.entries(req.headers))if(v!==undefined)headers.set(k,Array.isArray(v)?v.join(','):v);
  const url=new URL(req.url,`https://${req.headers.host}`);
  const request=new Request(url,{method:req.method,headers,...(['GET','HEAD'].includes(req.method)?{}:{body:Buffer.concat(chunks)})});
- const response=await handleApi(request,process.env);
+ // Date, schedule and prices are intentionally sourced only from public/site-settings.json.
+ // Strip legacy/content env overrides so an old Vercel value cannot silently change the offer.
+ const {EVENT_DAY,EVENT_MONTH,EVENT_YEAR,EVENT_DATE,EVENT_TIME,COURSE_PRICE_USD,COURSE_PRICE_PEN,ORDER_BUMP_PEN,...runtimeEnv}=process.env;
+ const response=await handleApi(request,runtimeEnv);
  res.statusCode=response.status;response.headers.forEach((v,k)=>res.setHeader(k,v));res.end(Buffer.from(await response.arrayBuffer()));
 }
-
