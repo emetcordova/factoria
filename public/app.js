@@ -10,13 +10,13 @@ const marketingLoaded={meta:false,google:false,tiktok:false};
 export const consentAllowed=consent;
 export const consentResolved=()=>['yes','no'].includes(read('emet_marketing'));
 export const configuration=config;
-export const orderBumpSelected=()=>read('emet_order_bump')!=='no';
+export const orderBumpSelected=()=>read('emet_order_bump')==='yes';
 export function setOrderBump(value){write('emet_order_bump',value?'yes':'no');window.dispatchEvent(new CustomEvent('emet-order-bump',{detail:{selected:Boolean(value)}}));}
 const totalFor=c=>Number(c.course?.amount||50)+(orderBumpSelected()?Number(c.orderBump?.amount||19):0);
 const money=value=>`S/ ${Number(value).toFixed(0)}`;
 function applySiteConfig(c){
  const date=c.eventDate||'miércoles 28 de octubre de 2026',time=c.eventTime||'7:00 p. m. a 10:00 p. m.';
- const refreshPrice=()=>{const total=totalFor(c),priceText=money(total);document.querySelectorAll('[data-course-price]').forEach(el=>el.textContent=priceText);document.querySelectorAll('[data-base-price]').forEach(el=>el.textContent=money(c.course.amount));document.querySelectorAll('[data-order-total]').forEach(el=>el.textContent=priceText);document.querySelectorAll('[data-order-bump]').forEach(el=>{el.checked=orderBumpSelected()});};
+ const refreshPrice=()=>{const total=totalFor(c),priceText=money(total);document.querySelectorAll('[data-course-price]').forEach(el=>el.textContent=money(c.course.amount));document.querySelectorAll('[data-base-price]').forEach(el=>el.textContent=money(c.course.amount));document.querySelectorAll('[data-order-total]').forEach(el=>el.textContent=priceText);document.querySelectorAll('[data-order-bump]').forEach(el=>{el.checked=orderBumpSelected()});};
  document.querySelectorAll('.brand').forEach(el=>{if(!el.querySelector('.brand-logo')){el.textContent='';const img=document.createElement('img');img.className='brand-logo';img.src='/assets/emet-logo.png';img.alt='Emet Córdova';el.append(img)}});
  document.querySelectorAll('[data-event-date]').forEach(el=>el.textContent=date);
  document.querySelectorAll('[data-event-time]').forEach(el=>el.textContent=time);
