@@ -10,17 +10,17 @@ const marketingLoaded={meta:false,google:false,tiktok:false};
 export const consentAllowed=consent;
 export const consentResolved=()=>['yes','no'].includes(read('emet_marketing'));
 export const configuration=config;
-export const orderBumpSelected=()=>read('emet_order_bump')==='yes';
+export const orderBumpSelected=()=>read('emet_order_bump')!=='no';
 export function setOrderBump(value){write('emet_order_bump',value?'yes':'no');window.dispatchEvent(new CustomEvent('emet-order-bump',{detail:{selected:Boolean(value)}}));}
 const totalFor=c=>Number(c.course?.amount||50)+(orderBumpSelected()?Number(c.orderBump?.amount||19):0);
 const money=value=>`S/ ${Number(value).toFixed(0)}`;
 function applySiteConfig(c){
- const date=c.eventDate||'miércoles 28 de octubre de 2026',time=c.eventTime||'7:00 p. m. a 10:00 p. m. (hora de Perú)';
- const refreshPrice=()=>{const total=totalFor(c),priceText=money(total);document.querySelectorAll('[data-course-price]').forEach(el=>el.textContent=priceText);document.querySelectorAll('[data-base-price]').forEach(el=>el.textContent=money(c.course.amount));document.querySelectorAll('[data-order-total]').forEach(el=>el.textContent=priceText);document.querySelectorAll('[data-order-bump]').forEach(el=>{el.checked=orderBumpSelected()});const priceEl=document.querySelector('.price-card .price');if(priceEl)priceEl.innerHTML=`<span>S/</span>${total}`;const mobilePrice=document.querySelector('.mobile-cta strong');if(mobilePrice)mobilePrice.textContent=priceText;};
+ const date=c.eventDate||'miércoles 28 de octubre de 2026',time=c.eventTime||'7:00 p. m. a 10:00 p. m.';
+ const refreshPrice=()=>{const total=totalFor(c),priceText=money(total);document.querySelectorAll('[data-course-price]').forEach(el=>el.textContent=priceText);document.querySelectorAll('[data-base-price]').forEach(el=>el.textContent=money(c.course.amount));document.querySelectorAll('[data-order-total]').forEach(el=>el.textContent=priceText);document.querySelectorAll('[data-order-bump]').forEach(el=>{el.checked=orderBumpSelected()});const mobilePrice=document.querySelector('.mobile-cta strong');if(mobilePrice)mobilePrice.textContent=priceText;};
  document.querySelectorAll('.brand').forEach(el=>{if(!el.querySelector('.brand-logo')){el.textContent='';const img=document.createElement('img');img.className='brand-logo';img.src='/assets/emet-logo.png';img.alt='Emet Córdova';el.append(img)}});
  document.querySelectorAll('[data-event-date]').forEach(el=>el.textContent=date);
  document.querySelectorAll('[data-event-time]').forEach(el=>el.textContent=time);
- document.querySelectorAll('[data-whatsapp-group]').forEach(el=>el.href=c.whatsappUrl||'https://chat.whatsapp.com/B8WmTjXB53w6yMZji9maiE');
+ document.querySelectorAll('[data-whatsapp-group]').forEach(el=>el.href=c.whatsappUrl||'https://chat.whatsapp.com/CFCV2SkykSOGxlmUVtsIYg');
  document.querySelectorAll('[data-available-seats]').forEach(el=>el.textContent=String(c.availableSeats||7));
  document.querySelectorAll('.whatsapp-icon').forEach(el=>el.innerHTML='<svg viewBox="0 0 24 24" width="21" height="21" fill="none" aria-hidden="true"><path fill="currentColor" d="M12 3.5a8.5 8.5 0 0 0-7.31 12.84L3.5 20.5l4.3-1.13A8.5 8.5 0 1 0 12 3.5Zm0 15.4a6.9 6.9 0 0 1-3.51-.96l-.25-.15-2.55.67.68-2.48-.16-.26A6.9 6.9 0 1 1 12 18.9Zm3.79-5.18c-.2-.1-1.18-.58-1.36-.65-.18-.06-.31-.1-.44.1-.13.2-.5.65-.61.78-.11.13-.23.15-.43.05-.2-.1-.85-.31-1.62-.99-.6-.53-1-1.18-1.11-1.38-.12-.2-.01-.3.09-.4.09-.09.2-.23.3-.34.1-.12.13-.2.2-.33.07-.13.03-.25-.02-.35-.05-.1-.44-1.07-.6-1.46-.16-.38-.32-.33-.44-.34h-.38c-.13 0-.34.05-.52.25-.18.2-.68.67-.68 1.64s.7 1.9.8 2.03c.1.13 1.38 2.1 3.34 2.95.47.2.84.32 1.13.41.48.15.92.13 1.27.08.39-.06 1.18-.48 1.35-.94.17-.46.17-.85.12-.94-.05-.08-.18-.13-.38-.23Z"/></svg>');
  const announcement=document.querySelector('.announcement strong');if(announcement)announcement.textContent=date.toUpperCase();

@@ -18,6 +18,7 @@ async function mountCheckout(c,stripe){
  checkoutInstance=checkout;loading.hidden=true;checkout.mount('#checkout');
 }
 async function start(){
+ setOrderBump(true);
  try {
   const [c]=await Promise.all([configuration,loadStripe()]);activeConfig=c;
   if(!c.checkoutEnabled)throw Error('Las inscripciones online todavía no están habilitadas. Escríbenos para coordinar tu acceso al taller.');

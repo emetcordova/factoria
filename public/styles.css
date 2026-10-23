@@ -78,3 +78,7 @@
 
 /* Eight evenly sized videos on phones; the pizza stays in the desktop grid. */
 @media(max-width:760px){.video-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.video-grid>:nth-child(-n+6),.video-grid>.is-secondary{grid-column:auto}.video-grid>.is-mobile-hidden{display:none}.video-grid>:last-child:nth-child(odd){aspect-ratio:4/5}}
+
+/* Workshop offer and responsive proof cards. */
+.video-cta{margin:32px auto 0}.includes-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-width:920px;margin:0 auto 60px}.extras-card{border-color:#d8c8f5!important;background:#faf6ff!important}.extras-note{font-size:14px;line-height:1.6;padding:14px 16px;border-radius:12px;background:#f9f5ff;color:#3d3151}.testimonials-rows .testimonial{width:auto;min-width:0}.testimonials-rows .testimonial blockquote{overflow-wrap:anywhere}
+@media(max-width:760px){.hero-copy h1{font-size:clamp(34px,9vw,44px);line-height:1.1}.hero-video-wrap{max-width:100%;margin:18px 0}.hero-video{max-height:none}.includes-grid{grid-template-columns:1fr}.testimonials-rows{grid-template-columns:repeat(2,minmax(0,1fr));padding-inline:12px}.testimonials-rows .testimonial{min-width:0;padding:11px}.testimonials-rows .testimonial footer{gap:5px}.testimonials-rows .testimonial-avatar{width:26px;height:26px;flex-basis:26px}.testimonials-rows .testimonial footer strong{font-size:10px;overflow-wrap:anywhere}}

@@ -1,5 +1,5 @@
 export const COURSE = { id: 'emet-contenido-ia-2026-10-01', name: 'Taller en vivo IA', amount: 5000, currency: 'pen' };
-export const ORDER_BUMP = { id: 'grabacion-soporte-certificado', name: 'Grabación + soporte + certificado', amount: 1900, currency: 'pen' };
+export const ORDER_BUMP = { id: 'grabacion-soporte-certificado', name: 'Aula virtual 1 año + comunidad + curso de Marketing Digital + soporte + grabación', amount: 1900, currency: 'pen' };
 const API_VERSION = '2026-08-26.dahlia';
 import defaults from '../public/site-settings.json' with {type: 'json'};
 function whatsappInvite(value) {
