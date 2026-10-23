@@ -16,7 +16,7 @@ function webhook(session=baseSession,type='checkout.session.completed'){
 
 test('public config is PEN, S/50 base, S/19 bump and 28 October Peru schedule',async()=>{
  const data=await (await handleApi(new Request('https://example.com/api/config'),env,never)).json();
- assert.equal(data.checkoutEnabled,true);assert.equal(data.course.amount,50);assert.equal(data.course.currency,'PEN');assert.equal(data.orderBump.amount,19);assert.equal(data.orderBump.currency,'PEN');assert.equal(data.eventDateISO,'2026-10-28');assert.equal(data.eventTime,'7:00 p. m. a 10:00 p. m.');assert.equal(data.STRIPE_SECRET_KEY,undefined);assert.equal(data.META_ACCESS_TOKEN,undefined);
+ assert.equal(data.checkoutEnabled,true);assert.equal(data.course.amount,50);assert.equal(data.course.currency,'PEN');assert.equal(data.orderBump.amount,19);assert.equal(data.orderBump.currency,'PEN');assert.equal(data.whatsappUrl,'https://chat.whatsapp.com/CFCV2SkykSOGxlmUVtsIYg');assert.equal(data.eventDateISO,'2026-10-28');assert.equal(data.eventTime,'7:00 p. m. a 10:00 p. m.');assert.equal(data.STRIPE_SECRET_KEY,undefined);assert.equal(data.META_ACCESS_TOKEN,undefined);
 });
 
 test('checkout without bump creates one PEN item for S/50 and preserves attribution metadata',async()=>{

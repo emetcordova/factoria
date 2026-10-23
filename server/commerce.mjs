@@ -21,7 +21,7 @@ export function settings(env) {
  const amount=Number(env.COURSE_PRICE_PEN||defaults.pricePEN), bumpAmount=Number(env.ORDER_BUMP_PEN||defaults.orderBumpPEN);
  if(!Number.isFinite(amount)||amount<=0||amount>=100000||Math.abs(amount*100-Math.round(amount*100))>0.00001)throw Error('invalid_course_price');
  if(!Number.isFinite(bumpAmount)||bumpAmount<=0||bumpAmount>=100000||Math.abs(bumpAmount*100-Math.round(bumpAmount*100))>0.00001)throw Error('invalid_order_bump_price');
- const whatsapp=whatsappInvite(env.WHATSAPP_GROUP_URL)||whatsappInvite(defaults.whatsappGroupUrl);
+ const whatsapp=whatsappInvite(defaults.whatsappGroupUrl);
  const availableSeats=Number(env.AVAILABLE_SEATS||defaults.availableSeats||0);
  if(!Number.isInteger(availableSeats)||availableSeats<0||availableSeats>999)throw Error('invalid_available_seats');
  return {date,time,startsAt,dateOnly,whatsapp,availableSeats,course:{...COURSE,amount:Math.round(amount*100)},orderBump:{...ORDER_BUMP,amount:Math.round(bumpAmount*100)}};
