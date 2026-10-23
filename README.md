@@ -1,134 +1,81 @@
 # Emet · Contenido en minutos con IA
 
-Landing clara en blanco, fucsia, violeta y azul. Taller en vivo por Zoom, 1 de octubre de 2026, US$19, pago único. Incluye temario, ejemplos, beneficios, preguntas, checkout y página de confirmación.
+Landing de venta para el taller en vivo por Zoom de Emet Córdova.
 
-## Estado de entrega
+## Oferta vigente
 
-- Diseño y navegación implementados, con fotos ilustrativas generadas con IA.
-- Stripe Embedded Checkout implementado con sesión creada en servidor. **Faltan credenciales y una compra de prueba real para activarlo y validarlo con tu cuenta.** Sin credenciales, la página informa que las inscripciones online no están habilitadas y ofrece contacto; nunca simula un pago.
-- Meta Pixel configurable: PageView, ViewContent, InitiateCheckout y Purchase. Purchase solo se envía cuando el servidor confirma `payment_status=paid`, el curso correcto, USD y 1900 centavos.
-- Conversions API opcional vía webhook firmado de Stripe; usa el mismo `event_id` que el Pixel para deduplicación. Stripe reintenta si Meta falla. El consentimiento y los bloqueadores pueden limitar la medición; no se promete atribución del 100%.
-- Vercel se despliega desde la rama `main` de este repositorio.
-- Testimonios y marcas están preparados en `public/proof.json` y ocultos hasta recibir contenido auténtico aprobado. No hay reseñas, nombres, resultados ni clientes inventados.
-- El horario y la duración de las asesorías incluidas deben confirmarse por el organizador. El acceso a aula y WhatsApp se coordina manualmente después del pago; este proyecto no automatiza altas ni correos.
+- Fecha: miércoles 28 de octubre de 2026.
+- Horario: 7:00 p. m. a 10:00 p. m. (hora de Perú).
+- Precio base: S/ 50 (PEN).
+- Adicional opcional: grabación + soporte + certificado por S/ 19.
+- Total con adicional: S/ 69.
+- Configuración central: `public/site-settings.json`.
 
-## Desplegar en Vercel
+## Checkout y medición
 
-1. Sube este proyecto a un repositorio de tu cuenta GitHub e impórtalo en Vercel.
-2. Usa el directorio raíz, framework **Other**, Node.js 22 o superior. `vercel.json` define build (`npm run build`), salida (`public`) y las rutas `/checkout` y `/gracias`. Las funciones están en `api/[...path].js`.
-3. Configura las variables siguientes en **Settings → Environment Variables**. Copia los nombres de `.env.example`; no subas claves al repositorio ni las escribas en HTML/JavaScript público.
-4. Despliega. El checkout utiliza el origen HTTPS de la solicitud para la URL de retorno y comprueba que el navegador envíe el mismo origen. Así funciona con el dominio de producción y sus previews sin cambiar una variable de dominio.
-5. Configura Stripe y Meta como se indica abajo y prueba antes de vender.
+El sitio usa Stripe Embedded Checkout con sesiones creadas en servidor. El navegador no define el importe: el servidor crea un ítem de S/ 50 y, cuando corresponde, un segundo ítem de S/ 19. La selección del adicional queda identificada como segundo line item y mediante `metadata.order_bump`.
 
-El proyecto no requiere dependencias de npm externas. La compilación produce también un Worker para Sites con los mismos archivos y lógica; eso no cambia la salida de Vercel.
+El checkout conserva la atribución disponible (`utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`, `fbp` y `fbc`). La página de confirmación consulta la sesión directamente a Stripe y usa `amount_total` para reportar el monto real cobrado.
 
-## Variables
+Medición configurada:
 
-| Variable | Uso |
-|---|---|
-| `EVENT_DATE` | Fecha visible del taller, por ejemplo `Jueves 1 de octubre de 2026`. |
-| `EVENT_TIME` | Hora visible del taller, por ejemplo `8:00 p. m. (hora Perú)`. |
-| `COURSE_PRICE_USD` | Precio entero en dólares; el servidor lo aplica al Checkout. |
-| `WHATSAPP_GROUP_URL` | Enlace del grupo mostrado después de un pago confirmado. |
-| `AVAILABLE_SEATS` | Cupos disponibles mostrados en el aviso de la landing. Valor predeterminado: `7`. |
-| `STRIPE_SECRET_KEY` | Clave secreta, únicamente en servidor. |
-| `STRIPE_PUBLISHABLE_KEY` | Clave publicable del mismo modo test/live que la secreta. |
-| `STRIPE_WEBHOOK_SECRET` | Secreto de firma del endpoint webhook específico de ese despliegue. |
-| `META_PIXEL_ID` | ID numérico del píxel/dataset. |
-| `GOOGLE_ANALYTICS_ID` | ID de medición de Google Analytics 4, por ejemplo `G-XXXXXXXXXX`. |
-| `TIKTOK_PIXEL_ID` | ID del píxel de TikTok Ads. |
-| `META_ACCESS_TOKEN` | Token privado para Conversions API, solo si se activa CAPI. |
-| `META_GRAPH_VERSION` | Versión de Graph API admitida por tu app Meta (formato `vNN.N`). Necesaria con CAPI. |
-| `META_TEST_EVENT_CODE` | Opcional, código de Test Events. Retirar para campañas reales. |
+- Meta Pixel: `PageView`, `ViewContent`, `InitiateCheckout`, `Purchase`.
+- Meta Conversions API: `Purchase`, con el mismo `event_id` determinístico del navegador para deduplicación.
+- Google Analytics 4: `view_item`, `begin_checkout`, `purchase`.
+- TikTok Pixel: `ViewContent`, `InitiateCheckout`, `CompletePayment`.
 
-No es necesario crear un Price ID: el servidor fija nombre, cantidad 1 y precio US$19 en `server/commerce.mjs`. El navegador no puede modificar el precio. API Stripe fijada a `2026-08-26.dahlia`; el cliente carga Stripe.js directamente de `https://js.stripe.com/dahlia/stripe.js` y monta `createEmbeddedCheckoutPage`.
+Los eventos con valor usan PEN. `InitiateCheckout` refleja S/ 50 o S/ 69 según la selección y `Purchase` usa el monto confirmado por Stripe.
 
-## Activación Stripe
+## Avisos de inscripción
 
-1. Configura claves **de prueba** del mismo proyecto Stripe.
-2. Crea un destino webhook en Stripe: `https://TU-DOMINIO/api/stripe-webhook`. Selecciona `checkout.session.completed` y `checkout.session.async_payment_succeeded`; usa la misma versión API. Guarda su secreto en `STRIPE_WEBHOOK_SECRET`.
-3. Prueba pago aprobado (tarjeta de prueba 4242 4242 4242 4242), rechazo y autenticación 3DS desde el checkout. Verifica el pago en Stripe y el estado en `/gracias`. No uses una tarjeta real en modo test.
-4. Verifica que cancelar o recargar una página sin pago no genere Purchase. La visita a `/gracias` por sí sola no basta.
-5. Cuando todo esté aprobado, cambia a las claves live y al secreto del webhook live. Configura en Stripe el nombre comercial, recibos y políticas aplicables a tu venta. El checkout recoge el email del comprador, pero el acceso al curso se coordina manualmente.
+Los avisos de inscripción provienen únicamente de compras reales y pagadas de Stripe. La API prioriza compras asociadas a la fecha actual del taller y, si no existen, utiliza la fecha anterior disponible. Si no hay registros elegibles, no muestra avisos.
 
-## Activación Meta
+La respuesta pública expone únicamente nombre de pila y provincia/departamento. No devuelve correo, apellido, monto, referencia de pago ni ID de Stripe.
 
-Configura `META_PIXEL_ID`. Esta distribución de la landing está destinada a una audiencia que ya otorgó autorización de medición antes de recibir el enlace: la web registra esa autorización en la primera visita, no muestra un segundo cuadro de cookies y envía `InitiateCheckout` al entrar al pago. La autorización queda asociada a la sesión para enviar `Purchase` después de que Stripe confirme el cobro. Para recuperar conversiones cuando no se visita la página de confirmación, añade token y versión de Graph API y activa el webhook anterior.
+El checkout solicita el campo personalizado `Ciudad / provincia` y los términos informan que el nombre de pila y la provincia o departamento pueden mostrarse como aviso de inscripción conforme a la Ley N.° 29733 de Protección de Datos Personales del Perú.
 
-El evento de compra lleva `event_id=purchase_<stripe_session_id>` tanto en navegador como en servidor. Los reintentos usan el mismo ID y Meta deduplica. El correo se normaliza y transforma con SHA-256 en el servidor; no se expone a la página de confirmación. Se envían fbp/fbc y UTMs únicamente con consentimiento. La negativa no impide comprar. Las compras Stripe en modo test solo se habilitan para medición cuando existe `META_TEST_EVENT_CODE`; retíralo antes de usar campañas reales.
+## Contenido auténtico
 
-En Meta Events Manager, verifica Test Events, deduplicación y diagnósticos antes de activar campañas. La API de Meta no se ha podido validar con credenciales reales en esta entrega; configura una versión vigente de Graph API y verifica aceptación del evento en tu cuenta.
+`public/proof.json` contiene exactamente seis testimonios aprobados. No se generan testimonios ni compradores aleatorios desde el frontend.
 
-## Google Analytics y TikTok Ads
+La galería se alimenta desde `public/gallery.json`; los recursos deben tener `approved:true` para mostrarse como contenido aprobado.
 
-Añade `GOOGLE_ANALYTICS_ID` y `TIKTOK_PIXEL_ID` en Vercel. Los scripts se cargan únicamente después de que la persona acepte la medición. La web envía vistas de producto, inicio de checkout y compra confirmada. En Google Analytics el evento de compra se llama `purchase`; en TikTok se envía como `CompletePayment`.
+## Archivos principales
 
-La tarjeta de actividad consulta compras reales y pagadas de Stripe de los últimos 30 días. Solo muestra el país y una hora relativa; no expone nombre, correo, referencia ni otro dato del comprador. Con claves de prueba no se muestran avisos de compra.
+- `public/index.html`: landing.
+- `public/app.js`: configuración de interfaz, atribución y píxeles.
+- `public/checkout.html` / `public/checkout.js`: selector del adicional y Stripe Embedded Checkout.
+- `public/gracias.html` / `public/gracias.js`: confirmación y `Purchase` del navegador.
+- `server/commerce.mjs`: sesiones Stripe, validación de pagos, CAPI, webhook y avisos de compras reales.
+- `public/site-settings.json`: fecha, horario y precios vigentes.
+- `public/proof.json`: seis testimonios aprobados.
+- `public/assets/hero-workshop.mp4`: video vertical optimizado del hero.
+- `public/assets/emet-workshop.jpg`: fotografía de Emet.
 
-Las compras confirmadas por otros medios se administran en `public/sales-proof.json`. La landing publica únicamente el primer nombre y el país, sin apellidos ni una hora inventada. Estos registros se mezclan de forma aleatoria con la actividad de Stripe y aparecen en intervalos esporádicos. Solo deben incluirse compras reales cuya publicación haya sido autorizada por el responsable del sitio.
+## Variables privadas
 
-## Contenido auténtico: testimonios y marcas
+Configura en Vercel las claves privadas y los identificadores de medición documentados en `.env.example`. Nunca incluyas secretos en archivos públicos.
 
-`public/proof.json` empieza vacío. Su estructura es:
+Las variables de fecha y precio antiguas se ignoran deliberadamente en la función de Vercel: `public/site-settings.json` es la única fuente de verdad para la oferta visible y los importes del checkout.
 
-```json
-{
-  "brands": [
-    {"name":"Nombre confirmado", "logo":"/assets/logo-autorizado.svg", "source":"URL de referencia pública o confirmación autorizada", "approved":true}
-  ],
-  "testimonials": [
-    {"name":"Nombre real", "role":"Cargo autorizado", "quote":"Testimonio literal autorizado", "photo":"/assets/foto-autorizada.webp", "source":"URL de referencia pública o confirmación autorizada", "approved":true}
-  ]
-}
-```
+## Pruebas
 
-No publiques documentos privados como fuentes: este JSON es público. `logo`, `photo` y `role` son opcionales. Usa exclusivamente opiniones recibidas y marcas que realmente asesoraste. Las fotos ilustrativas de la landing no representan alumnos ni al instructor. Se pueden reemplazar por fotos tuyas y de talleres con autorización.
+`npm test` cubre:
 
-## Comprobaciones locales
+- configuración PEN;
+- checkout base S/ 50;
+- checkout con adicional S/ 69;
+- origen permitido;
+- validación del monto real de Stripe;
+- Meta CAPI con monto real y deduplicación;
+- firma de webhook;
+- avisos de inscripción reales de la fecha actual y fallback a la fecha anterior;
+- ausencia de compradores inventados cuando no hay resultados.
 
-`npm test` comprueba precio fijo, origen, firmas, estado de pago, privacidad, consentimiento, deduplicación por ID y reintentos. Son pruebas con respuestas simuladas, sin cobrar dinero ni llamar a Stripe/Meta.
+`npm run build` valida los archivos públicos y exige exactamente seis testimonios aprobados.
 
-`npm run build` comprueba archivos y prueba social aprobada, y genera el Worker. No sustituye una prueba de compra con Stripe, la validación de Events Manager ni una publicación real en Vercel.
+El workflow `.github/workflows/checkout-smoke.yml` se ejecuta al hacer push a `main`. Además de pruebas y build, valida `https://factoria-two.vercel.app/api/config` y crea sesiones Stripe live no pagadas para los caminos S/ 50 y S/ 69. No genera cargos.
 
-## Referencias de implementación
+## Despliegue
 
-- [Stripe Embedded Checkout](https://docs.stripe.com/checkout/embedded/quickstart)
-- [Firma de webhooks Stripe](https://docs.stripe.com/webhooks/signature)
-- [Versiones Stripe](https://docs.stripe.com/api/versioning)
-- [Vercel Functions](https://vercel.com/docs/functions/quickstart)
-- [Meta: deduplicación Pixel y Conversions API](https://developers.facebook.com/docs/marketing-api/conversions-api/deduplicate-pixel-and-server-events/)
-
-## Editar fecha, horario, precio y WhatsApp
-
-Edita `public/site-settings.json` para configurar valores sin entrar en Vercel:
-- `event.day`, `event.month`, `event.year`: día, mes y año numéricos.
-- `event.timePeru`: hora en Perú en formato 24 horas, por ejemplo `20:00`. Vacío significa horario por confirmar.
-- `priceUSD`: precio en dólares, admite hasta dos decimales.
-- `whatsappGroupUrl`: enlace del grupo después del pago.
-
-También puedes crear manualmente estas variables en Vercel → proyecto → Settings → Environment Variables → Production: `EVENT_DAY`, `EVENT_MONTH`, `EVENT_YEAR`, `EVENT_TIME`, `COURSE_PRICE_USD`, `WHATSAPP_GROUP_URL`. Las variables sobrescriben el archivo. **Subir código a GitHub no crea variables en el panel de Vercel.** Las claves `STRIPE_SECRET_KEY` y `STRIPE_PUBLISHABLE_KEY` del mismo modo (test o live) son obligatorias para habilitar el pago. Después de cambiarlas, ejecuta Redeploy. Elimina `EVENT_DATE` si lo habías configurado para usar el nuevo día/mes/año. Elimina un `EVENT_TIME` antiguo de texto y usa `HH:mm` para activar la conversión internacional.
-
-La hora base es Perú. La web convierte automáticamente a CDMX, Buenos Aires, Santiago, Bogotá, Nueva York/Miami y Los Ángeles usando las zonas IANA y la fecha del evento, incluido horario de verano. No representa todos los husos de cada país.
-
-## Fotos, diseños y nueve videos
-
-Edita `public/gallery.json` y sube archivos a `public/assets/` o usa URLs HTTPS directas. Formato:
-
-```json
-{
-  "images": [
-    {"src":"/assets/diseno-alumna.webp","title":"Campaña de producto","author":"Nombre autorizado","approved":true}
-  ],
-  "videos": [
-    {"src":"/assets/reel-alumna.mp4","poster":"/assets/reel-portada.webp","title":"Producto en movimiento","author":"Nombre autorizado","approved":true}
-  ]
-}
-```
-
-Usa únicamente trabajos reales autorizados; `approved:true` confirma que puedes publicarlos. No se incluyen trabajos de estudiantes inventados. Sin fotos aprobadas se muestran ejemplos existentes etiquetados como ilustrativos; sin videos se muestran nueve espacios Próximamente. Los primeros nueve videos aprobados aparecen en orden, en tres columnas de escritorio. En móvil, los seis principales se muestran en dos columnas y los tres secundarios en una fila compacta. Usa MP4 H.264 con audio AAC para compatibilidad móvil, portadas WebP y clips comprimidos. YouTube/Instagram no son URLs de archivos MP4.
-
-Las primeras 20 fotos se distribuyen en dos filas de hasta 10 originales: fotos 1–10 arriba, 11–20 abajo. Si hay hasta 10 fotos, la segunda fila repite esas piezas en orden inverso. Las filas avanzan en sentidos opuestos y solo se pausan al abrir una imagen; al cerrar continúan. Los nueve videos intentan reproducirse desde que carga la página, en silencio y en bucle (sujeto a las políticas de autoplay del navegador), incluso si aún no están en pantalla. Al pulsar se abren completos con audio; al cerrar se detiene el reproductor ampliado y las nueve vistas previas continúan silenciadas. Se pausan al ocultar la pestaña. Escape cierra el visor y devuelve el foco; se conserva la posición de scroll.
-
-## Variables en el panel de Vercel
-
-`vercel-content.env` contiene únicamente las seis variables de contenido listas para copiar o importar en Settings → Environment Variables. Selecciona Production (y Preview si lo necesitas) y vuelve a desplegar. No reemplaces ni borres las variables existentes de Stripe y Meta. `EVENT_TIME` se deja vacío hasta confirmar la hora; para las 8 p. m. de Perú usa `20:00`. Un commit en GitHub no añade filas al panel de variables de Vercel.
+Vercel está conectado a la rama `main` del repositorio. Cada push despliega automáticamente la versión de producción. `vercel.json` mantiene el build existente (`npm run build`), la salida `public` y los rewrites de `/checkout` y `/gracias`.
