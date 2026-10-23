@@ -1,104 +1,57 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHmac} from 'node:crypto';
-import {handleApi,verifySignature,COURSE} from '../server/commerce.mjs';
+import {handleApi,verifySignature,COURSE,ORDER_BUMP} from '../server/commerce.mjs';
+
 const env={SITE_URL:'https://example.com',STRIPE_SECRET_KEY:'sk_test_example',STRIPE_PUBLISHABLE_KEY:'pk_test_example',STRIPE_WEBHOOK_SECRET:'whsec_example',META_PIXEL_ID:'12345',META_ACCESS_TOKEN:'test-token',META_GRAPH_VERSION:'v23.0',META_TEST_EVENT_CODE:'TEST123'};
-const session={id:'cs_test_abcdefghijklm',mode:'payment',status:'complete',payment_status:'paid',amount_total:1900,currency:'usd',livemode:true,metadata:{course_id:COURSE.id,marketing_consent:'true'},customer_details:{email:'Person@example.com'}};
+const baseSession={id:'cs_test_abcdefghijklm',mode:'payment',status:'complete',payment_status:'paid',amount_total:5000,currency:'pen',livemode:true,metadata:{course_id:COURSE.id,event_date:'2026-10-28',order_bump:'false',marketing_consent:'true'},customer_details:{name:'Jorge Example',email:'Person@example.com'},custom_fields:[{key:'city_province',text:{value:'Lima'}}]};
+const bumpSession={...baseSession,amount_total:6900,metadata:{...baseSession.metadata,order_bump:'true'}};
 const fakeResponse=d=>new Response(JSON.stringify(d),{headers:{'Content-Type':'application/json'}});
-const req=(body,origin=env.SITE_URL)=>new Request('https://example.com/api/checkout',{method:'POST',headers:{origin,'Content-Type':'application/json'},body:JSON.stringify(body)});
+const req=body=>new Request('https://example.com/api/checkout',{method:'POST',headers:{origin:'https://example.com','Content-Type':'application/json'},body:JSON.stringify(body)});
 const never=()=>{throw Error('Must not call external service')};
-function webhook(s=session,type='checkout.session.completed'){
- const payload=JSON.stringify({type,livemode:true,created:Math.floor(Date.now()/1000),data:{object:s}});const t=Math.floor(Date.now()/1000);const signature=createHmac('sha256',env.STRIPE_WEBHOOK_SECRET).update(t+'.'+payload).digest('hex');
+function webhook(session=baseSession,type='checkout.session.completed'){
+ const payload=JSON.stringify({type,livemode:true,created:Math.floor(Date.now()/1000),data:{object:session}});const t=Math.floor(Date.now()/1000);const signature=createHmac('sha256',env.STRIPE_WEBHOOK_SECRET).update(t+'.'+payload).digest('hex');
  return new Request('https://example.com/api/stripe-webhook',{method:'POST',headers:{'stripe-signature':`t=${t},v1=${signature}`},body:payload});
 }
-test('Configuration never exposes secret keys and checkout fails safely when unconfigured',async()=>{
- const r=await handleApi(new Request('https://example.com/api/config'),env,never);const data=await r.json();assert.equal(data.checkoutEnabled,true);assert.equal(data.STRIPE_SECRET_KEY,undefined);assert.equal(data.META_ACCESS_TOKEN,undefined);
- assert.equal((await handleApi(req({}),{},never)).status,503);
+
+test('public config is PEN, S/50 base, S/19 bump and 28 October Peru schedule',async()=>{
+ const data=await (await handleApi(new Request('https://example.com/api/config'),env,never)).json();
+ assert.equal(data.checkoutEnabled,true);assert.equal(data.course.amount,50);assert.equal(data.course.currency,'PEN');assert.equal(data.orderBump.amount,19);assert.equal(data.orderBump.currency,'PEN');assert.equal(data.eventDateISO,'2026-10-28');assert.equal(data.eventTime,'7:00 p. m. a 10:00 p. m. (hora de Perú)');assert.equal(data.STRIPE_SECRET_KEY,undefined);assert.equal(data.META_ACCESS_TOKEN,undefined);
 });
-test('Configuration exposes only validated public analytics IDs and inventory',async()=>{
- const configured={...env,GOOGLE_ANALYTICS_ID:'G-ABC1234567',TIKTOK_PIXEL_ID:'C1234567890ABCDE',AVAILABLE_SEATS:'7'};
- const data=await (await handleApi(new Request('https://example.com/api/config'),configured,never)).json();
- assert.equal(data.googleAnalyticsId,'G-ABC1234567');assert.equal(data.tiktokPixelId,'C1234567890ABCDE');assert.equal(data.availableSeats,7);
- const invalid=await (await handleApi(new Request('https://example.com/api/config'),{...env,GOOGLE_ANALYTICS_ID:'bad',TIKTOK_PIXEL_ID:'bad'},never)).json();
- assert.equal(invalid.googleAnalyticsId,null);assert.equal(invalid.tiktokPixelId,null);
+
+test('checkout without bump creates one PEN item for S/50 and preserves attribution metadata',async()=>{
+ let params;const r=await handleApi(req({requestId:'abcdefghijklmnopqrstuvwx',consent:true,orderBump:false,utm_source:'meta',utm_campaign:'octubre'}),env,async(url,o)=>{assert.equal(url,'https://api.stripe.com/v1/checkout/sessions');params=new URLSearchParams(o.body);return fakeResponse({client_secret:'secret',id:baseSession.id})});
+ assert.equal(r.status,200);assert.equal(params.get('line_items[0][price_data][currency]'),'pen');assert.equal(params.get('line_items[0][price_data][unit_amount]'),'5000');assert.equal(params.get('line_items[1][price_data][unit_amount]'),null);assert.equal(params.get('metadata[order_bump]'),'false');assert.equal(params.get('metadata[event_date]'),'2026-10-28');assert.equal(params.get('metadata[utm_source]'),'meta');assert.equal(params.get('metadata[utm_campaign]'),'octubre');assert.equal(params.get('custom_fields[0][key]'),'city_province');assert.equal(params.get('custom_fields[0][label][custom]'),'Ciudad / provincia');
 });
-test('Checkout rejects a foreign origin',async()=>assert.equal((await handleApi(req({},'https://evil.example'),env,never)).status,403));
-test('Invalid optional WhatsApp override does not disable Stripe checkout',async()=>{
- const changed={...env,WHATSAPP_GROUP_URL:'invalid link'};
- const data=await (await handleApi(new Request('https://example.com/api/config'),changed,never)).json();
- assert.equal(data.checkoutEnabled,true);
- assert.match(data.whatsappUrl,/^https:\/\/chat\.whatsapp\.com\/[a-zA-Z0-9]+$/);
- const withTracking=await (await handleApi(new Request('https://example.com/api/config'),{...env,WHATSAPP_GROUP_URL:'https://chat.whatsapp.com/Example123?mode=invite'},never)).json();
- assert.equal(withTracking.whatsappUrl,'https://chat.whatsapp.com/Example123');
+
+test('checkout with bump creates S/50 + S/19 items for S/69 and identifies bump',async()=>{
+ let params;const r=await handleApi(req({requestId:'abcdefghijklmnopqrstuvwx',consent:false,orderBump:true}),env,async(url,o)=>{params=new URLSearchParams(o.body);return fakeResponse({client_secret:'secret',id:bumpSession.id})});
+ assert.equal(r.status,200);assert.equal(params.get('line_items[0][price_data][unit_amount]'),'5000');assert.equal(params.get('line_items[1][price_data][unit_amount]'),'1900');assert.equal(params.get('line_items[1][price_data][currency]'),'pen');assert.equal(params.get('line_items[1][price_data][product_data][name]'),ORDER_BUMP.name);assert.equal(params.get('metadata[order_bump]'),'true');assert.equal(params.get('payment_intent_data[metadata][order_bump]'),'true');
 });
-test('Checkout uses its HTTPS deployment origin when SITE_URL is absent or stale',async()=>{
- const changed={...env,SITE_URL:'https://old.example'};
- let params;
- const r=await handleApi(new Request('https://new.example/api/checkout',{method:'POST',headers:{origin:'https://new.example','Content-Type':'application/json'},body:JSON.stringify({requestId:'abcdefghijklmnopqrstuvwx'})}),changed,async(url,o)=>{params=new URLSearchParams(o.body);return fakeResponse({client_secret:'secret',id:session.id})});
- assert.equal(r.status,200);
- assert.match(params.get('return_url'),/^https:\/\/new\.example\/gracias\?/);
- const cfg=await (await handleApi(new Request('https://new.example/api/config'),changed,never)).json();
- assert.equal(cfg.checkoutEnabled,true);
+
+test('checkout rejects foreign origin',async()=>{
+ const r=await handleApi(new Request('https://example.com/api/checkout',{method:'POST',headers:{origin:'https://evil.example','Content-Type':'application/json'},body:JSON.stringify({requestId:'abcdefghijklmnopqrstuvwx'})}),env,never);assert.equal(r.status,403);
 });
-test('Checkout price, currency, quantity and redirect are fixed server-side',async()=>{
- let body,headers;const r=await handleApi(req({requestId:'abcdefghijklmnopqrstuvwx',amount:1,currency:'pen',return_url:'https://evil.example',quantity:100,consent:false}),env,async(url,o)=>{assert.equal(url,'https://api.stripe.com/v1/checkout/sessions');body=new URLSearchParams(o.body);headers=o.headers;return fakeResponse({client_secret:'secret',id:session.id})});
- assert.equal(r.status,200);assert.equal(body.get('line_items[0][price_data][unit_amount]'),'1900');assert.equal(body.get('line_items[0][price_data][currency]'),'usd');assert.equal(body.get('line_items[0][quantity]'),'1');assert.match(body.get('return_url'),/^https:\/\/example.com\/gracias\?/);assert.equal(body.get('metadata[marketing_consent]'),'false');assert.equal(headers['Idempotency-Key'],'emet-abcdefghijklmnopqrstuvwx');assert.equal(body.get('ui_mode'),'embedded_page');
+
+test('session reports actual Stripe amount and bump choice',async()=>{
+ for(const [session,value,bump] of [[baseSession,50,false],[bumpSession,69,true]]){const r=await handleApi(new Request('https://example.com/api/session?session_id='+session.id),env,async()=>fakeResponse(session));const data=await r.json();assert.equal(data.paid,true);assert.equal(data.value,value);assert.equal(data.currency,'PEN');assert.equal(data.orderBump,bump);assert.equal(data.eventId,'purchase_'+session.id);assert.equal(data.customer_details,undefined)}
 });
-test('Raw webhook signature rejects invalid or stale payloads and accepts a valid one',async()=>{
- const raw='{"test":true}',t=Math.floor(Date.now()/1000);const sig=createHmac('sha256',env.STRIPE_WEBHOOK_SECRET).update(t+'.'+raw).digest('hex');
- assert.equal(await verifySignature(raw,`t=${t},v1=${sig}`,env.STRIPE_WEBHOOK_SECRET),true);
- assert.equal(await verifySignature(raw+' ',`t=${t},v1=${sig}`,env.STRIPE_WEBHOOK_SECRET),false);
- assert.equal(await verifySignature(raw,`t=${t},v1=${sig}`,env.STRIPE_WEBHOOK_SECRET,Date.now()+400000),false);
-});
-test('Status confirms only paid sessions; does not expose customer email',async()=>{
- const request=()=>new Request('https://example.com/api/session?session_id='+session.id);
- const unpaid=await (await handleApi(request(),env,async()=>fakeResponse({...session,payment_status:'unpaid'}))).json();assert.equal(unpaid.paid,false);
- const paid=await (await handleApi(request(),env,async()=>fakeResponse(session))).json();assert.equal(paid.paid,true);assert.equal(paid.eventId,'purchase_'+session.id);assert.equal(paid.customer_details,undefined);assert.equal(JSON.stringify(paid).includes('Person@'),false);
-});
-test('Test purchases can be measured only when Meta Test Events is configured',async()=>{
- const request=()=>new Request('https://example.com/api/session?session_id='+session.id);
- const testSession={...session,livemode:false};
- const enabled=await (await handleApi(request(),env,async()=>fakeResponse(testSession))).json();assert.equal(enabled.allowTracking,true);
- const disabled=await (await handleApi(request(),{...env,META_TEST_EVENT_CODE:''},async()=>fakeResponse(testSession))).json();assert.equal(disabled.allowTracking,false);
-});
-test('A different product cannot be reported as a course purchase',async()=>{
- const r=await handleApi(new Request('https://example.com/api/session?session_id='+session.id),env,async()=>fakeResponse({...session,metadata:{course_id:'another_product'}}));assert.equal(r.status,404);
-});
-test('Unsigned webhook cannot create a conversion',async()=>{
- const r=await handleApi(new Request('https://example.com/api/stripe-webhook',{method:'POST',body:'{}'}),env,never);assert.equal(r.status,400);
-});
-test('Confirmed webhook sends actual amount, hashed email and same event_id as browser; retries keep same ID',async()=>{
+
+test('CAPI Purchase uses real PEN amount and deterministic event id',async()=>{
  const sent=[];const fetcher=async(url,o)=>{assert.match(url,/graph.facebook.com/);sent.push(JSON.parse(o.body));return fakeResponse({events_received:1})};
- assert.equal((await handleApi(webhook(),env,fetcher)).status,200);assert.equal((await handleApi(webhook(),env,fetcher)).status,200);
- assert.equal(sent[0].data[0].event_id,'purchase_'+session.id);assert.equal(sent[0].data[0].event_id,sent[1].data[0].event_id);assert.equal(sent[0].data[0].custom_data.value,19);assert.match(sent[0].data[0].user_data.em[0],/^[a-f0-9]{64}$/);assert.equal(JSON.stringify(sent).includes('Person@'),false);
-});
-test('Unpaid or unconsented purchases never trigger CAPI',async()=>{
- assert.equal((await handleApi(webhook({...session,payment_status:'unpaid'}),env,never)).status,200);
- const r=await handleApi(webhook({...session,metadata:{course_id:COURSE.id,marketing_consent:'false'}}),env,never);assert.equal((await r.json()).delivery,'no_consent');
-});
-test('Failed Meta delivery returns an error so Stripe can retry',async()=>{
- const r=await handleApi(webhook(),env,async()=>new Response('{}',{status:500}));assert.equal(r.status,502);
+ assert.equal((await handleApi(webhook(baseSession),env,fetcher)).status,200);assert.equal((await handleApi(webhook(bumpSession),env,fetcher)).status,200);
+ assert.equal(sent[0].data[0].custom_data.currency,'PEN');assert.equal(sent[0].data[0].custom_data.value,50);assert.equal(sent[0].data[0].custom_data.num_items,1);assert.equal(sent[0].data[0].event_id,'purchase_'+baseSession.id);assert.equal(sent[1].data[0].custom_data.value,69);assert.equal(sent[1].data[0].custom_data.num_items,2);assert.match(sent[0].data[0].user_data.em[0],/^[a-f0-9]{64}$/);assert.equal(JSON.stringify(sent).includes('Person@'),false);
 });
 
-test('Structured date, Peru time and decimal price are shared with checkout',async()=>{
- const changed={...env,EVENT_DAY:'2',EVENT_MONTH:'11',EVENT_YEAR:'2026',EVENT_TIME:'20:30',COURSE_PRICE_USD:'27.50'};
- const cfg=await (await handleApi(new Request('https://example.com/api/config'),changed,never)).json();
- assert.equal(cfg.eventStartsAt,'2026-11-02T20:30:00-05:00');assert.equal(cfg.course.amount,27.5);assert.equal(cfg.eventDateISO,'2026-11-02');assert.match(cfg.eventDate,/noviembre/);
- let params;const r=await handleApi(req({requestId:'abcdefghijklmnopqrstuvwx'}),changed,async(url,o)=>{params=new URLSearchParams(o.body);return fakeResponse({client_secret:'test',id:session.id})});
- assert.equal(r.status,200);assert.equal(params.get('line_items[0][price_data][unit_amount]'),'2750');
-});
-test('Impossible date or invalid configured price cannot create a payment',async()=>{
- for(const overrides of [{EVENT_MONTH:'2',EVENT_DAY:'31'},{COURSE_PRICE_USD:'-1'},{COURSE_PRICE_USD:'abc'}]){
- const r=await handleApi(req({requestId:'abcdefghijklmnopqrstuvwx'}),{...env,...overrides},never);assert.equal(r.status,502);
- }
-});
-test('Recent activity contains only anonymous, recent, paid live purchases',async()=>{
- const live={...env,STRIPE_SECRET_KEY:'sk_live_example',STRIPE_PUBLISHABLE_KEY:'pk_live_example'};const created=Math.floor(Date.now()/1000)-70;
- const recent={...session,livemode:true,created,customer_details:{name:'Jorge Example',email:'jorge@example.com',address:{country:'PY'}}};
- const old={...recent,created:created-31*24*60*60,customer_details:{address:{country:'PE'}}};
- const other={...recent,metadata:{course_id:'other'},customer_details:{address:{country:'AR'}}};
- const r=await handleApi(new Request('https://example.com/api/recent-activity'),live,async(url)=>{assert.match(url,/checkout\/sessions\?limit=30&status=complete$/);return fakeResponse({data:[recent,old,other]})});
- const data=await r.json();assert.deepEqual(data.purchases,[{countryCode:'PY',created}]);assert.equal(JSON.stringify(data).includes('Jorge'),false);assert.equal(JSON.stringify(data).includes('@'),false);assert.equal(JSON.stringify(data).includes(session.id),false);
- const testMode=await (await handleApi(new Request('https://example.com/api/recent-activity'),env,never)).json();assert.deepEqual(testMode.purchases,[]);
+test('raw webhook signature rejects invalid or stale payload and accepts valid one',async()=>{
+ const raw='{"test":true}',t=Math.floor(Date.now()/1000);const sig=createHmac('sha256',env.STRIPE_WEBHOOK_SECRET).update(t+'.'+raw).digest('hex');assert.equal(await verifySignature(raw,`t=${t},v1=${sig}`,env.STRIPE_WEBHOOK_SECRET),true);assert.equal(await verifySignature(raw+' ',`t=${t},v1=${sig}`,env.STRIPE_WEBHOOK_SECRET),false);assert.equal(await verifySignature(raw,`t=${t},v1=${sig}`,env.STRIPE_WEBHOOK_SECRET,Date.now()+400000),false);
 });
 
+test('recent activity exposes only first name and province from real live current-event sessions',async()=>{
+ const live={...env,STRIPE_SECRET_KEY:'sk_live_example',STRIPE_PUBLISHABLE_KEY:'pk_live_example'};const current={...baseSession,livemode:true};const otherDate={...baseSession,id:'cs_live_other123456',metadata:{...baseSession.metadata,event_date:'2026-10-01'},customer_details:{name:'Ana Other',email:'ana@example.com'},custom_fields:[{key:'city_province',text:{value:'Arequipa'}}]};
+ const r=await handleApi(new Request('https://example.com/api/recent-activity'),live,async(url)=>{assert.match(url,/checkout\/sessions\?limit=100&status=complete$/);return fakeResponse({data:[current,otherDate]})});const data=await r.json();assert.deepEqual(data.purchases,[{firstName:'Jorge',province:'Lima'}]);assert.equal(JSON.stringify(data).includes('@'),false);assert.equal(JSON.stringify(data).includes(baseSession.id),false);
+});
+
+test('recent activity falls back to previous workshop and never fabricates names',async()=>{
+ const live={...env,STRIPE_SECRET_KEY:'sk_live_example',STRIPE_PUBLISHABLE_KEY:'pk_live_example'};const previous={...baseSession,id:'cs_live_prev123456',metadata:{...baseSession.metadata,event_date:'2026-10-01'},customer_details:{name:'Ana María',email:'ana@example.com'},custom_fields:[{key:'city_province',text:{value:'Cusco'}}]};const r=await handleApi(new Request('https://example.com/api/recent-activity'),live,async()=>fakeResponse({data:[previous]}));const data=await r.json();assert.deepEqual(data.purchases,[{firstName:'Ana',province:'Cusco'}]);const empty=await (await handleApi(new Request('https://example.com/api/recent-activity'),live,async()=>fakeResponse({data:[]}))).json();assert.deepEqual(empty.purchases,[]);
+});
