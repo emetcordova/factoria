@@ -8,8 +8,16 @@ permissions:
 jobs:
   checkout:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run commerce tests
+        run: npm test
+      - name: Verify production build
+        run: npm run build
       - name: Check public Stripe configuration
         shell: bash
         run: |
@@ -25,29 +33,38 @@ jobs:
               config = json.load(f)
           print("Checkout enabled:", config.get("checkoutEnabled"))
           print("Stripe test mode:", config.get("testMode"))
-          print("Price:", config.get("course", {}).get("amount"))
-          if not config.get("checkoutEnabled"):
-              raise SystemExit("Checkout is disabled on the production URL")
+          print("Base price:", config.get("course", {}).get("amount"))
+          print("Order bump:", config.get("orderBump", {}).get("amount"))
+          assert config.get("checkoutEnabled") is True
+          assert config.get("course", {}).get("amount") == 50
+          assert config.get("course", {}).get("currency") == "PEN"
+          assert config.get("orderBump", {}).get("amount") == 19
+          assert config.get("orderBump", {}).get("currency") == "PEN"
+          assert config.get("eventDateISO") == "2026-10-28"
+          assert config.get("eventTime") == "7:00 p. m. a 10:00 p. m. (hora de Perú)"
           PY
-      - name: Create an unpaid Stripe Checkout session
+      - name: Create unpaid Stripe Checkout sessions for S/50 and S/69
         shell: bash
         run: |
-          id=$(python3 -c 'import uuid; print(uuid.uuid4())')
-          status=$(curl --connect-timeout 10 --max-time 30 -sS -o session.json -w '%{http_code}' \
-            -X POST https://factoria-two.vercel.app/api/checkout \
-            -H 'Origin: https://factoria-two.vercel.app' \
-            -H 'Content-Type: application/json' \
-            -d "{\"requestId\":\"$id\",\"consent\":false}")
-          echo "Checkout session HTTP status: $status"
-          if [ "$status" != "200" ]; then
-            head -c 300 session.json
-            exit 1
-          fi
+          for bump in false true; do
+            id=$(python3 -c 'import uuid; print(uuid.uuid4())')
+            status=$(curl --connect-timeout 10 --max-time 30 -sS -o "session-$bump.json" -w '%{http_code}' \
+              -X POST https://factoria-two.vercel.app/api/checkout \
+              -H 'Origin: https://factoria-two.vercel.app' \
+              -H 'Content-Type: application/json' \
+              -d "{\"requestId\":\"$id\",\"consent\":false,\"orderBump\":$bump}")
+            echo "Checkout $bump HTTP status: $status"
+            if [ "$status" != "200" ]; then
+              head -c 300 "session-$bump.json"
+              exit 1
+            fi
+          done
           python3 - <<'PY'
           import json
-          with open("session.json") as f:
-              session = json.load(f)
-          assert isinstance(session.get("clientSecret"), str) and session["clientSecret"]
-          assert isinstance(session.get("sessionId"), str) and session["sessionId"].startswith("cs_live_")
-          print("Stripe live Checkout session created without payment")
+          for bump in ('false','true'):
+              with open(f"session-{bump}.json") as f:
+                  session=json.load(f)
+              assert isinstance(session.get("clientSecret"),str) and session["clientSecret"]
+              assert isinstance(session.get("sessionId"),str) and session["sessionId"].startswith("cs_live_")
+          print("Stripe live unpaid sessions created for base and order-bump paths")
           PY
