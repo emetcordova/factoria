@@ -97,12 +97,12 @@
 .contact-dialog{width:min(420px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;margin:auto;padding:38px 28px 28px;border:0;border-radius:20px;background:#fff;color:var(--ink);text-align:left;box-shadow:0 24px 80px #180e3433}
 .contact-dialog::backdrop{background:#160d2c99}
 .contact-dialog h2{margin:0 24px 10px 0;font-size:27px;letter-spacing:-.8px;line-height:1.2}
-.contact-dialog p{margin:0 0 24px;color:var(--muted);font-size:14px;line-height:1.5}
 .contact-close{position:absolute;top:10px;right:10px;width:36px;height:36px;border:0;border-radius:50%;background:#f4f1f8;color:var(--ink);font:inherit;font-size:25px;cursor:pointer}
 .contact-dialog label{display:block;margin:16px 0 7px;font-size:14px;font-weight:700}
 .contact-dialog input{display:block;width:100%;min-height:48px;padding:12px 14px;border:1px solid #d9d2e4;border-radius:10px;background:#fff;color:var(--ink);font:inherit;font-size:16px}
 .contact-dialog input:focus-visible{outline:2px solid var(--purple);outline-offset:2px}
-.contact-dialog .contact-submit{width:100%;min-height:50px;margin-top:24px;padding:15px 10px;justify-content:center;gap:0;border:0;background:#128c4b;color:#fff;font-size:14px;font-weight:700;animation:none;cursor:pointer}
-.contact-submit:hover{background:#0f783f}
+.contact-dialog .contact-submit{width:100%;min-height:58px;margin-top:24px;padding:16px 12px;justify-content:center;gap:10px;border:2px solid #25d366;background:linear-gradient(135deg,#0b8442,#086831);color:#fff;font-size:13px;font-weight:800;line-height:1.3;box-shadow:0 8px 24px #25d36655;animation:none;cursor:pointer}
+.contact-submit svg{flex-shrink:0}
+.contact-dialog .contact-submit:hover{background:#086831;box-shadow:0 10px 28px #25d36677}
 .contact-close:focus-visible,.contact-submit:focus-visible{outline:3px solid var(--purple);outline-offset:3px}
-@media(max-width:380px){.contact-dialog{padding:36px 20px 24px}.contact-dialog .contact-submit{font-size:13px}}
+@media(max-width:380px){.contact-dialog{padding:36px 20px 24px}.contact-dialog .contact-submit{font-size:12px;gap:7px;padding-inline:8px}}
