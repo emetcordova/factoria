@@ -36,9 +36,9 @@ contactForm.addEventListener('submit',event=>{
  const name=nameInput.value.trim();
  const phone=phoneInput.value.replace(/\D/g,'');
  nameInput.setCustomValidity(name?'':'Escribe tu nombre.');
- phoneInput.setCustomValidity(/^[0-9+()\s.-]+$/.test(phoneInput.value)&&/^\d{9,15}$/.test(phone)?'':'Escribe un celular válido, por ejemplo: 970 333 889.');
+ phoneInput.setCustomValidity(/^[0-9+()\s.-]+$/.test(phoneInput.value)&&/^\d{9,15}$/.test(phone)?'':'Escribe un celular válido, por ejemplo: 952 387 189.');
  if(!contactForm.reportValidity())return;
- const message=`Hola, soy ${name}. Mi número de celular es ${phoneInput.value.trim()}. Quiero información para reservar mi cupo en el taller de IA de S/ 50.`;
+ const message='quiero separar mi cupo para el taller por favor';
  const url=new URL(contactForm.action);
  url.searchParams.set('text',message);
  window.location.assign(url.href);
