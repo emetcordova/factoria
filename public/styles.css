@@ -106,3 +106,5 @@
 .contact-dialog .contact-submit:hover{background:#086831;box-shadow:0 10px 28px #25d36677}
 .contact-close:focus-visible,.contact-submit:focus-visible{outline:3px solid var(--purple);outline-offset:3px}
 @media(max-width:380px){.contact-dialog{padding:36px 20px 24px}.contact-dialog .contact-submit{font-size:12px;gap:7px;padding-inline:8px}}
+
+.contact-dialog .autosave-notice{margin:12px 0 18px;color:var(--muted);font-size:11px;line-height:1.5}.autosave-notice a{text-decoration:underline}
