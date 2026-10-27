@@ -25,10 +25,14 @@ function doPost(event) {
   const row=match?match.getRow():lastRow+1;
   const old=match?sheet.getRange(row,1,1,8).getValues()[0]:null;
   if(old&&Number(old[7])>=body.revision)return reply({saved:true,id:body.id});
-  const now=new Date(),zone='America/Lima';
+  const now=new Date();
   const safeName=/^[=+\-@]/.test(name)?"'"+name:name;
-  const values=[body.id,safeName,body.phone,old?old[3]:Utilities.formatDate(now,zone,'yyyy-MM-dd'),old?old[4]:Utilities.formatDate(now,zone,'HH:mm:ss'),Utilities.formatDate(now,zone,'yyyy-MM-dd HH:mm:ss'),body.whatsappClicked===true||old&&old[6]==='Sí'?'Sí':'No',body.revision];
-  sheet.getRange(row,1,1,7).setNumberFormat('@');
+  const values=[body.id,safeName,body.phone,old?old[3]:now,old?old[4]:now,now,body.whatsappClicked===true||old&&old[6]==='Sí'?'Sí':'No',body.revision];
+  sheet.getRange(row,1,1,3).setNumberFormat('@');
+  sheet.getRange(row,4).setNumberFormat('dd/mm/yyyy');
+  sheet.getRange(row,5).setNumberFormat('HH:mm:ss');
+  sheet.getRange(row,6).setNumberFormat('dd/mm/yyyy HH:mm:ss');
+  sheet.getRange(row,7).setNumberFormat('@');
   sheet.getRange(row,1,1,8).setValues([values]);
   SpreadsheetApp.flush();
   return reply({saved:true,id:body.id});

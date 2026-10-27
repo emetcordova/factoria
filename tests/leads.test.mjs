@@ -66,7 +66,7 @@ test('Apps Script upserts preserve first receipt, reject stale edits and retain 
  const post=body=>context.doPost({postData:{contents:JSON.stringify(body)}});
  assert.equal(post({...data,phone:'987654321',secret:'wrong'}).saved,false);assert.equal(rows.length,0);
  const base={...data,phone:'987654321',secret:env.LEADS_WEBHOOK_SECRET};assert.equal(post(base).saved,true);assert.equal(rows.length,2);
- const created=rows[1].slice(3,5);
+ const created=rows[1].slice(3,5);assert(created[0] instanceof Date);assert(created[1] instanceof Date);assert(rows[1][5] instanceof Date);
  post({...base,revision:125,name:'=FORMULA()',whatsappClicked:true});assert.equal(rows.length,2);assert.equal(rows[1][1],"'=FORMULA()");assert.deepEqual(rows[1].slice(3,5),created);
  post({...base,revision:124,name:'outdated'});assert.equal(rows[1][1],"'=FORMULA()");
  post({...base,revision:126});assert.equal(rows[1][6],'Sí');assert.equal(locked,false);
