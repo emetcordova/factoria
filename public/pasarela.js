@@ -3,6 +3,8 @@ import {configuration,consentAllowed,attribution,track} from './app.js?v=pasarel
 let opening=false;
 const buttons=[...document.querySelectorAll('[data-checkout-cta]')];
 const error=document.querySelector('#payment-error');
+// Restore controls when returning from Stripe through the browser back cache.
+window.addEventListener('pageshow',()=>{opening=false;buttons.forEach(b=>{b.disabled=false;b.removeAttribute('aria-busy')})});
 buttons.forEach(button=>button.addEventListener('click',async()=>{
  if(opening)return;
  opening=true;error.hidden=true;
