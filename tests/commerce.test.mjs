@@ -70,5 +70,5 @@ test('pasarela creates embedded Stripe checkout for S/50 and preserves conversio
 test('pasarela confirmed payment preserves Purchase deduplication and landing source',async()=>{
  let payload;const session={...baseSession,metadata:{...baseSession.metadata,event_date:'2026-11-12',landing_page:'pasarela'}};
  const response=await handleApi(webhook(session),env,async(url,o)=>{payload=JSON.parse(o.body);return fakeResponse({events_received:1})});
- assert.equal(response.status,200);assert.equal(payload.data[0].event_source_url,'https://example.com/pasarela');assert.equal(payload.data[0].event_id,'purchase_'+session.id);assert.equal(payload.data[0].custom_data.value,50);
+ assert.equal(response.status,200);assert.equal(payload.data[0].event_source_url,'https://example.com/pasarela/checkout');assert.equal(payload.data[0].event_id,'purchase_'+session.id);assert.equal(payload.data[0].custom_data.value,50);
 });

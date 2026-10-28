@@ -5,7 +5,7 @@ const write=(key,value)=>{try{localStorage.setItem(key,value)}catch{}};
 // the prior authorization on first visit and initialize the configured pixels.
 if(read('emet_marketing')===null)write('emet_marketing','yes');
 const consent=()=>read('emet_marketing')==='yes';
-const pasarela=location.pathname.replace(/\/$/,'').replace(/\.html$/,'')==='/pasarela'||new URLSearchParams(location.search).get('event')==='pasarela';
+const pasarela=location.pathname.replace(/\/$/,'').replace(/\.html$/,'').startsWith('/pasarela')||new URLSearchParams(location.search).get('event')==='pasarela';
 const landingPage=['/','/pasarela','/pasarela/','/pasarela.html'].includes(location.pathname);
 const config=fetch('/api/config'+(pasarela?'?event=pasarela':''),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('config');return r.json()}).catch(()=>({checkoutEnabled:false,pixelId:null,course:{id:'emet-contenido-ia-2026-10-01',name:'Contenido en minutos con IA — Emet',amount:50,currency:'PEN'},orderBump:{amount:19}}));
 const marketingLoaded={meta:false,google:false,tiktok:false};

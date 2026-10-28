@@ -62,7 +62,7 @@ export async function sendPurchase(s,event,env,fetcher,c=COURSE,b=ORDER_BUMP,sit
  if(email)user.em=[await sha256(email)];
  for(const name of ['fbp','fbc'])if(s.metadata[name])user[name]=s.metadata[name];
  if(s.metadata.client_user_agent)user.client_user_agent=s.metadata.client_user_agent;
- const payload={data:[{event_name:'Purchase',event_time:event.created,event_id:'purchase_'+s.id,action_source:'website',event_source_url:siteOrigin+(s.metadata.landing_page==='pasarela'?'/pasarela':'/checkout'),user_data:user,custom_data:{currency:'PEN',value:s.amount_total/100,content_ids:[c.id],content_type:'product',num_items:hasOrderBump(s)?2:1}}]};
+ const payload={data:[{event_name:'Purchase',event_time:event.created,event_id:'purchase_'+s.id,action_source:'website',event_source_url:siteOrigin+(s.metadata.landing_page==='pasarela'?'/pasarela/checkout':'/checkout'),user_data:user,custom_data:{currency:'PEN',value:s.amount_total/100,content_ids:[c.id],content_type:'product',num_items:hasOrderBump(s)?2:1}}]};
  if(env.META_TEST_EVENT_CODE)payload.test_event_code=env.META_TEST_EVENT_CODE;
  const r=await fetcher(`https://graph.facebook.com/${env.META_GRAPH_VERSION}/${env.META_PIXEL_ID}/events`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+env.META_ACCESS_TOKEN},body:JSON.stringify(payload)});
  if(!r.ok)throw Error('meta_delivery_failed');
