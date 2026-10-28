@@ -99,7 +99,7 @@ export async function handleApi(request,env,fetcher=fetch) {
     'line_items[0][price_data][currency]':c.currency,'line_items[0][price_data][unit_amount]':String(c.amount),'line_items[0][price_data][product_data][name]':c.name,'line_items[0][quantity]':'1',
     'metadata[course_id]':c.id,'metadata[event_date]':cfg.dateOnly,'metadata[order_bump]':String(addBump),'metadata[marketing_consent]':String(body.consent===true),'payment_intent_data[metadata][course_id]':c.id,'payment_intent_data[metadata][event_date]':cfg.dateOnly,'payment_intent_data[metadata][order_bump]':String(addBump),
     'custom_fields[0][key]':'city_province','custom_fields[0][label][type]':'custom','custom_fields[0][label][custom]':'Ciudad / provincia','custom_fields[0][type]':'text','custom_fields[0][optional]':'false'});
-   if(pasarela){params.delete('ui_mode');params.delete('return_url');params.set('success_url',siteOrigin+'/gracias?event=pasarela&session_id={CHECKOUT_SESSION_ID}');params.set('cancel_url',siteOrigin+'/pasarela');params.set('metadata[landing_page]','pasarela');params.set('line_items[0][price_data][product_data][description]','Jueves 12 de noviembre de 2026 · 7:00 p. m. a 10:00 p. m. · Hora de Perú · En vivo por Zoom');}
+   if(pasarela){params.set('return_url',siteOrigin+'/gracias?event=pasarela&session_id={CHECKOUT_SESSION_ID}');params.set('metadata[landing_page]','pasarela');params.set('line_items[0][price_data][product_data][description]','Jueves 12 de noviembre de 2026 · 7:00 p. m. a 10:00 p. m. · Hora de Perú · En vivo por Zoom');}
    if(addBump){params.set('line_items[1][price_data][currency]',bump.currency);params.set('line_items[1][price_data][unit_amount]',String(bump.amount));params.set('line_items[1][price_data][product_data][name]',bump.name);params.set('line_items[1][quantity]','1');params.set('payment_intent_data[metadata][order_bump_name]',bump.name);}
    if(body.consent===true) {
     for(const name of ['fbp','fbc']){const v=clean(body[name]);if(/^fb\.\d+\.\d+\.[a-zA-Z0-9_-]+$/.test(v))params.set('metadata['+name+']',v);}
@@ -107,7 +107,7 @@ export async function handleApi(request,env,fetcher=fetch) {
     for(const name of ['utm_source','utm_medium','utm_campaign','utm_content','utm_term'])if(body[name])params.set('metadata['+name+']',clean(body[name],200));
    }
    const session=await stripe('checkout/sessions',env,fetcher,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','Idempotency-Key':'emet-'+body.requestId},body:params.toString()});
-   return pasarela?json({url:session.url,sessionId:session.id}):json({clientSecret:session.client_secret,sessionId:session.id});
+   return json({clientSecret:session.client_secret,sessionId:session.id});
   }
   if(path==='/api/session' && request.method==='GET') {
    if(!ready(env)||!siteOrigin)return json({error:'No podemos verificar el pago en este momento.'},503);
