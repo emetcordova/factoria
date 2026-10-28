@@ -55,3 +55,20 @@ test('recent activity exposes only first name and province from real live curren
 test('recent activity falls back to previous workshop and never fabricates names',async()=>{
  const live={...env,STRIPE_SECRET_KEY:'sk_live_example',STRIPE_PUBLISHABLE_KEY:'pk_live_example'};const previous={...baseSession,id:'cs_live_prev123456',metadata:{...baseSession.metadata,event_date:'2026-10-01'},customer_details:{name:'Ana María',email:'ana@example.com'},custom_fields:[{key:'city_province',text:{value:'Cusco'}}]};const r=await handleApi(new Request('https://example.com/api/recent-activity'),live,async()=>fakeResponse({data:[previous]}));const data=await r.json();assert.deepEqual(data.purchases,[{firstName:'Ana',province:'Cusco'}]);const empty=await (await handleApi(new Request('https://example.com/api/recent-activity'),live,async()=>fakeResponse({data:[]}))).json();assert.deepEqual(empty.purchases,[]);
 });
+
+test('pasarela config isolates November 12 schedule and S/50 from the original offer',async()=>{
+ const data=await (await handleApi(new Request('https://example.com/api/config?event=pasarela'),{...env,EVENT_DAY:'5',COURSE_PRICE_PEN:'99'},never)).json();
+ assert.equal(data.eventDateISO,'2026-11-12');assert.equal(data.eventDate,'jueves 12 de noviembre de 2026');assert.equal(data.eventStartsAt,'2026-11-12T19:00:00-05:00');assert.equal(data.course.amount,50);
+ const original=await (await handleApi(new Request('https://example.com/api/config'),env,never)).json();assert.equal(original.eventDateISO,'2026-10-28');
+});
+
+test('pasarela creates direct hosted Stripe checkout with fixed S/50 and conversion metadata',async()=>{
+ let params;const response=await handleApi(new Request('https://example.com/api/checkout-pasarela',{method:'POST',headers:{origin:'https://example.com','Content-Type':'application/json'},body:JSON.stringify({requestId:'abcdefghijklmnopqrstuvwx',consent:true,orderBump:true,utm_source:'meta',fbc:'fb.1.123456.abc'})}),env,async(url,o)=>{params=new URLSearchParams(o.body);return fakeResponse({id:baseSession.id,url:'https://checkout.stripe.com/c/pay/example'})});
+ const data=await response.json();assert.equal(response.status,200);assert.match(data.url,/checkout.stripe.com/);assert.equal(params.get('ui_mode'),null);assert.equal(params.get('return_url'),null);assert.equal(params.get('success_url'),'https://example.com/gracias?event=pasarela&session_id={CHECKOUT_SESSION_ID}');assert.equal(params.get('cancel_url'),'https://example.com/pasarela');assert.equal(params.get('line_items[0][price_data][unit_amount]'),'5000');assert.equal(params.get('line_items[1][quantity]'),null);assert.equal(params.get('metadata[event_date]'),'2026-11-12');assert.equal(params.get('metadata[order_bump]'),'false');assert.equal(params.get('metadata[landing_page]'),'pasarela');assert.equal(params.get('metadata[utm_source]'),'meta');assert.equal(params.get('metadata[fbc]'),'fb.1.123456.abc');
+});
+
+test('pasarela confirmed payment preserves Purchase deduplication and landing source',async()=>{
+ let payload;const session={...baseSession,metadata:{...baseSession.metadata,event_date:'2026-11-12',landing_page:'pasarela'}};
+ const response=await handleApi(webhook(session),env,async(url,o)=>{payload=JSON.parse(o.body);return fakeResponse({events_received:1})});
+ assert.equal(response.status,200);assert.equal(payload.data[0].event_source_url,'https://example.com/pasarela');assert.equal(payload.data[0].event_id,'purchase_'+session.id);assert.equal(payload.data[0].custom_data.value,50);
+});

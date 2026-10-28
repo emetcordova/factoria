@@ -62,7 +62,7 @@ export async function sendPurchase(s,event,env,fetcher,c=COURSE,b=ORDER_BUMP,sit
  if(email)user.em=[await sha256(email)];
  for(const name of ['fbp','fbc'])if(s.metadata[name])user[name]=s.metadata[name];
  if(s.metadata.client_user_agent)user.client_user_agent=s.metadata.client_user_agent;
- const payload={data:[{event_name:'Purchase',event_time:event.created,event_id:'purchase_'+s.id,action_source:'website',event_source_url:siteOrigin+'/checkout',user_data:user,custom_data:{currency:'PEN',value:s.amount_total/100,content_ids:[c.id],content_type:'product',num_items:hasOrderBump(s)?2:1}}]};
+ const payload={data:[{event_name:'Purchase',event_time:event.created,event_id:'purchase_'+s.id,action_source:'website',event_source_url:siteOrigin+(s.metadata.landing_page==='pasarela'?'/pasarela':'/checkout'),user_data:user,custom_data:{currency:'PEN',value:s.amount_total/100,content_ids:[c.id],content_type:'product',num_items:hasOrderBump(s)?2:1}}]};
  if(env.META_TEST_EVENT_CODE)payload.test_event_code=env.META_TEST_EVENT_CODE;
  const r=await fetcher(`https://graph.facebook.com/${env.META_GRAPH_VERSION}/${env.META_PIXEL_ID}/events`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+env.META_ACCESS_TOKEN},body:JSON.stringify(payload)});
  if(!r.ok)throw Error('meta_delivery_failed');
@@ -75,7 +75,8 @@ export async function handleApi(request,env,fetcher=fetch) {
  const u=new URL(request.url), path=u.pathname, siteOrigin=origin(request);
  const analyticsId=env.GOOGLE_ANALYTICS_ID===undefined?'G-ZCY5PSC64X':env.GOOGLE_ANALYTICS_ID;
  try {
-  const cfg=settings(env), c=cfg.course, bump=cfg.orderBump;
+  const pasarela=path==='/api/checkout-pasarela'||(path==='/api/config'&&u.searchParams.get('event')==='pasarela');
+  const cfg=settings(pasarela?{...env,EVENT_DAY:'12',EVENT_MONTH:'11',EVENT_YEAR:'2026',EVENT_DATE:'jueves 12 de noviembre de 2026',COURSE_PRICE_PEN:'50'}:env), c=cfg.course, bump=cfg.orderBump;
   if(path==='/api/config' && request.method==='GET')return json({checkoutEnabled:ready(env)&&Boolean(siteOrigin),publishableKey:ready(env)&&siteOrigin?env.STRIPE_PUBLISHABLE_KEY:null,pixelId:/^\d+$/.test(env.META_PIXEL_ID||'')?env.META_PIXEL_ID:null,googleAnalyticsId:/^G-[A-Z0-9]+$/.test(analyticsId)?analyticsId:null,tiktokPixelId:/^[A-Z0-9]{10,24}$/.test(env.TIKTOK_PIXEL_ID||'')?env.TIKTOK_PIXEL_ID:null,testMode:!env.STRIPE_SECRET_KEY?.startsWith('sk_live_'),course:{...c,amount:c.amount/100,currency:'PEN'},orderBump:{...bump,amount:bump.amount/100,currency:'PEN'},eventDate:cfg.date,eventTime:cfg.time,eventStartsAt:cfg.startsAt,eventDateISO:cfg.dateOnly,whatsappUrl:cfg.whatsapp,availableSeats:cfg.availableSeats});
   if(path==='/api/recent-activity' && request.method==='GET') {
    if(!ready(env)||!env.STRIPE_SECRET_KEY.startsWith('sk_live_'))return json({purchases:[]});
@@ -86,18 +87,19 @@ export async function handleApi(request,env,fetcher=fetch) {
    const purchases=eligible.map(s=>({firstName:firstName(s.customer_details?.name),province:customField(s,'city_province')})).filter(item=>item.firstName&&item.province).slice(0,8);
    return json({purchases});
   }
-  if(path==='/api/checkout' && request.method==='POST') {
+  if(['/api/checkout','/api/checkout-pasarela'].includes(path) && request.method==='POST') {
    if(!ready(env)||!siteOrigin)return json({error:'Las inscripciones online todavía no están habilitadas. Escríbenos para coordinar tu acceso.'},503);
    if(request.headers.get('origin')!==siteOrigin)return json({error:'Solicitud no autorizada.'},403);
    if(!request.headers.get('content-type')?.startsWith('application/json'))return json({error:'Formato no válido.'},415);
    const raw=await request.text();if(raw.length>8192)return json({error:'Solicitud demasiado grande.'},413);
    let body;try{body=JSON.parse(raw)}catch{return json({error:'Solicitud no válida.'},400)}
    if(!body || typeof body!=='object' || !/^[a-zA-Z0-9-]{20,80}$/.test(body.requestId||''))return json({error:'Recarga la página e inténtalo nuevamente.'},400);
-   const addBump=body.orderBump===true;
+   const addBump=!pasarela&&body.orderBump===true;
    const params=new URLSearchParams({ui_mode:'embedded_page',mode:'payment',locale:'es',return_url:siteOrigin+'/gracias?session_id={CHECKOUT_SESSION_ID}',
     'line_items[0][price_data][currency]':c.currency,'line_items[0][price_data][unit_amount]':String(c.amount),'line_items[0][price_data][product_data][name]':c.name,'line_items[0][quantity]':'1',
     'metadata[course_id]':c.id,'metadata[event_date]':cfg.dateOnly,'metadata[order_bump]':String(addBump),'metadata[marketing_consent]':String(body.consent===true),'payment_intent_data[metadata][course_id]':c.id,'payment_intent_data[metadata][event_date]':cfg.dateOnly,'payment_intent_data[metadata][order_bump]':String(addBump),
     'custom_fields[0][key]':'city_province','custom_fields[0][label][type]':'custom','custom_fields[0][label][custom]':'Ciudad / provincia','custom_fields[0][type]':'text','custom_fields[0][optional]':'false'});
+   if(pasarela){params.delete('ui_mode');params.delete('return_url');params.set('success_url',siteOrigin+'/gracias?event=pasarela&session_id={CHECKOUT_SESSION_ID}');params.set('cancel_url',siteOrigin+'/pasarela');params.set('metadata[landing_page]','pasarela');params.set('line_items[0][price_data][product_data][description]','Jueves 12 de noviembre de 2026 · 7:00 p. m. a 10:00 p. m. · Hora de Perú · En vivo por Zoom');}
    if(addBump){params.set('line_items[1][price_data][currency]',bump.currency);params.set('line_items[1][price_data][unit_amount]',String(bump.amount));params.set('line_items[1][price_data][product_data][name]',bump.name);params.set('line_items[1][quantity]','1');params.set('payment_intent_data[metadata][order_bump_name]',bump.name);}
    if(body.consent===true) {
     for(const name of ['fbp','fbc']){const v=clean(body[name]);if(/^fb\.\d+\.\d+\.[a-zA-Z0-9_-]+$/.test(v))params.set('metadata['+name+']',v);}
@@ -105,7 +107,7 @@ export async function handleApi(request,env,fetcher=fetch) {
     for(const name of ['utm_source','utm_medium','utm_campaign','utm_content','utm_term'])if(body[name])params.set('metadata['+name+']',clean(body[name],200));
    }
    const session=await stripe('checkout/sessions',env,fetcher,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','Idempotency-Key':'emet-'+body.requestId},body:params.toString()});
-   return json({clientSecret:session.client_secret,sessionId:session.id});
+   return pasarela?json({url:session.url,sessionId:session.id}):json({clientSecret:session.client_secret,sessionId:session.id});
   }
   if(path==='/api/session' && request.method==='GET') {
    if(!ready(env)||!siteOrigin)return json({error:'No podemos verificar el pago en este momento.'},503);
