@@ -112,7 +112,7 @@ export async function handleApi(request,env,fetcher=fetch) {
     if(!body.inline && (name.split(/\s+/).length<2||!/^\S+@\S+\.\S+$/.test(email)||!/^\+[1-9]\d{7,14}$/.test(phone)))return json({error:'Completa tu nombre, correo y WhatsApp para continuar.'},400);
     const recordings=body.recordings===true,personalCall=body.personalCall===true;
     const params=new URLSearchParams({ui_mode:'embedded_page',mode:'payment',locale:'es',return_url:siteOrigin+'/gracias?event=curso&session_id={CHECKOUT_SESSION_ID}',customer_email:email,expires_at:String(Math.floor(Date.now()/1000)+110*60), 'line_items[0][price_data][currency]':'usd','line_items[0][price_data][unit_amount]':'500','line_items[0][price_data][product_data][name]':RETO.name,'line_items[0][price_data][product_data][description]':'10, 11 y 12 de noviembre de 2026 · 10:00 a. m. · hora de Perú · En vivo','line_items[0][quantity]':'1','metadata[course_id]':RETO.id,'metadata[event_date]':'2026-11-10','metadata[landing_page]':'curso','metadata[buyer_name]':name,'metadata[whatsapp]':phone,'metadata[recordings]':String(recordings),'metadata[personal_call]':String(personalCall),'metadata[marketing_consent]':String(body.consent===true),'payment_intent_data[metadata][course_id]':RETO.id,'payment_intent_data[metadata][recordings]':String(recordings),'payment_intent_data[metadata][personal_call]':String(personalCall)});
-    if(body.inline){params.set('ui_mode','elements');params.delete('customer_email');params.delete('metadata[buyer_name]');params.delete('metadata[whatsapp]');params.set('phone_number_collection[enabled]','true');}
+    if(body.inline){params.set('ui_mode','elements');params.delete('customer_email');params.delete('metadata[buyer_name]');params.delete('metadata[whatsapp]');params.set('payment_method_types[0]','card');}
     else if(personalCall)params.set('phone_number_collection[enabled]','true');
     let index=1;for(const [chosen,item] of [[recordings,RETO_RECORDINGS],[personalCall,RETO_CALL]])if(chosen){params.set(`line_items[${index}][price_data][currency]`,'usd');params.set(`line_items[${index}][price_data][unit_amount]`,String(item.amount));params.set(`line_items[${index}][price_data][product_data][name]`,item.name);params.set(`line_items[${index}][quantity]`,'1');index++}
     if(body.consent===true){for(const name of ['fbp','fbc']){const v=clean(body[name]);if(/^fb\.\d+\.\d+\.[a-zA-Z0-9_-]+$/.test(v))params.set('metadata['+name+']',v)}params.set('metadata[client_user_agent]',clean(request.headers.get('user-agent'),450));for(const name of ['utm_source','utm_medium','utm_campaign','utm_content','utm_term'])if(body[name])params.set('metadata['+name+']',clean(body[name],200))}
@@ -131,6 +131,20 @@ export async function handleApi(request,env,fetcher=fetch) {
    }
    const session=await stripe('checkout/sessions',env,fetcher,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','Idempotency-Key':'emet-'+body.requestId},body:params.toString()});
    return json({clientSecret:session.client_secret,sessionId:session.id});
+  }
+  if(path==='/api/curso-buyer' && request.method==='POST'){
+   if(!ready(env)||!siteOrigin)return json({error:'El pago no está disponible.'},503);
+   if(request.headers.get('origin')!==siteOrigin)return json({error:'Solicitud no autorizada.'},403);
+   if(!request.headers.get('content-type')?.startsWith('application/json'))return json({error:'Formato no válido.'},415);
+   const raw=await request.text();if(raw.length>2048)return json({error:'Solicitud demasiado grande.'},413);
+   let body;try{body=JSON.parse(raw)}catch{return json({error:'Solicitud no válida.'},400)}
+   const id=body?.sessionId,name=clean(body?.name,100).trim(),phone=clean(body?.whatsapp,30).trim();
+   if(!/^cs_(test_|live_)?[a-zA-Z0-9]{10,250}$/.test(id||'')||name.split(/\s+/).length<2||!/^\+[1-9]\d{7,14}$/.test(phone))return json({error:'Completa tu nombre y WhatsApp para continuar.'},400);
+   const session=await stripe('checkout/sessions/'+encodeURIComponent(id),env,fetcher);
+   if(session.metadata?.course_id!==RETO.id||session.status!=='open'||session.client_secret!==body.clientSecret||session.metadata?.recordings!==String(body.recordings===true)||session.metadata?.personal_call!==String(body.personalCall===true))return json({error:'La sesión de pago cambió. Actualiza la página.'},409);
+   const params=new URLSearchParams({'metadata[buyer_name]':name,'metadata[whatsapp]':phone});
+   await stripe('checkout/sessions/'+encodeURIComponent(id),env,fetcher,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:params.toString()});
+   return json({updated:true});
   }
   if(path==='/api/session' && request.method==='GET') {
    if(!ready(env)||!siteOrigin)return json({error:'No podemos verificar el pago en este momento.'},503);

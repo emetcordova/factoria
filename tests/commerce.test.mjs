@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHmac} from 'node:crypto';
-import {handleApi,verifySignature,COURSE,ORDER_BUMP} from '../server/commerce.mjs';
+import {handleApi,verifySignature,COURSE,RETO,ORDER_BUMP} from '../server/commerce.mjs';
 
 const env={SITE_URL:'https://example.com',STRIPE_SECRET_KEY:'sk_test_example',STRIPE_PUBLISHABLE_KEY:'pk_test_example',STRIPE_WEBHOOK_SECRET:'whsec_example',META_PIXEL_ID:'12345',META_ACCESS_TOKEN:'test-token',META_GRAPH_VERSION:'v23.0',META_TEST_EVENT_CODE:'TEST123'};
 const baseSession={id:'cs_test_abcdefghijklm',mode:'payment',status:'complete',payment_status:'paid',amount_total:5000,currency:'pen',livemode:true,metadata:{course_id:COURSE.id,event_date:'2026-10-28',order_bump:'false',marketing_consent:'true'},customer_details:{name:'Jorge Example',email:'Person@example.com'},custom_fields:[{key:'city_province',text:{value:'Lima'}}]};
@@ -99,7 +99,16 @@ test('curso requires buyer contact before creating Stripe session',async()=>{con
 
 test('curso starts inline Stripe Elements immediately with accurate add-ons',async()=>{
  let params;const r=await handleApi(new Request('https://example.com/api/checkout-curso',{method:'POST',headers:{origin:'https://example.com','Content-Type':'application/json'},body:JSON.stringify({requestId:'abcdefghijklmnopqrstuvwx',inline:true,recordings:true,personalCall:true,consent:true})}),env,async(url,o)=>{params=new URLSearchParams(o.body);return fakeResponse({id:'cs_test_abcdefghijkl',client_secret:'cs_test_secret'})});
- assert.equal(r.status,200);assert.equal(params.get('ui_mode'),'elements');assert.equal(params.get('customer_email'),null);assert.equal(params.get('phone_number_collection[enabled]'),'true');assert.equal(params.get('metadata[buyer_name]'),null);assert.equal(params.get('line_items[1][price_data][unit_amount]'),'700');assert.equal(params.get('line_items[2][price_data][unit_amount]'),'2500');
+ assert.equal(r.status,200);assert.equal(params.get('ui_mode'),'elements');assert.equal(params.get('customer_email'),null);assert.equal(params.get('payment_method_types[0]'),'card');assert.equal(params.get('metadata[buyer_name]'),null);assert.equal(params.get('line_items[1][price_data][unit_amount]'),'700');assert.equal(params.get('line_items[2][price_data][unit_amount]'),'2500');
+});
+
+test('curso stores buyer details only for the matching open checkout',async()=>{
+ const payload={sessionId:'cs_test_abcdefghijkl',clientSecret:'cs_test_secret',name:'Ana Pérez',whatsapp:'+51912345678',recordings:true,personalCall:false};
+ const session={id:payload.sessionId,client_secret:payload.clientSecret,status:'open',metadata:{course_id:RETO.id,recordings:'true',personal_call:'false'}};
+ let updated=null;const request=body=>new Request('https://example.com/api/curso-buyer',{method:'POST',headers:{origin:'https://example.com','Content-Type':'application/json'},body:JSON.stringify(body)});
+ const fetcher=async(url,options)=>{if(options?.method==='POST'){updated=new URLSearchParams(options.body);return fakeResponse(session)}return fakeResponse(session)};
+ const good=await handleApi(request(payload),env,fetcher);assert.equal(good.status,200);assert.equal(updated.get('metadata[buyer_name]'),'Ana Pérez');assert.equal(updated.get('metadata[whatsapp]'),'+51912345678');
+ updated=null;const wrong=await handleApi(request({...payload,clientSecret:'wrong'}),env,fetcher);assert.equal(wrong.status,409);assert.equal(updated,null);
 });
 
 test('curso purchase notifications use only paid Stripe records with real names',async()=>{const live={...env,STRIPE_SECRET_KEY:'sk_live_example',STRIPE_PUBLISHABLE_KEY:'pk_live_example'};const session={...baseSession,id:'cs_live_realbuyer12345',amount_total:1200,currency:'usd',created:1793500000,custom_fields:[],metadata:{course_id:'emet-reto-contenido-ia-2026-11-10',recordings:'true',personal_call:'false',buyer_name:'Ana Pérez',marketing_consent:'false'},customer_details:{email:'ana@example.com'}};const unpaid={...session,id:'cs_live_unpaid12345',payment_status:'unpaid',metadata:{...session.metadata,buyer_name:'Inventada Falsa'}};const r=await handleApi(new Request('https://example.com/api/recent-activity?event=curso'),live,async()=>fakeResponse({data:[session,unpaid]}));const d=await r.json();assert.deepEqual(d.purchases,[{firstName:'Ana',province:null,product:'reto',recordings:true,created:1793500000}]);assert.equal(JSON.stringify(d).includes('Inventada'),false)});

@@ -27,3 +27,5 @@ html{scroll-padding-top:84px}.reto-topbar{position:sticky;top:0;z-index:85;backg
 .reto-avatar{background:#a42bca}
 .reto-faq .faq-list details{border-color:#e9dbf2;background:#faf7fd}
 @media(max-width:760px){.reto-pay-panel{padding-top:14px}.reto-continue{font-size:15px}}
+#reto-buyer-form #contact-details-element{margin:0 0 11px}
+#reto-buyer-form>.reto-phone-row{margin-bottom:14px}
