@@ -72,3 +72,17 @@ test('pasarela confirmed payment preserves Purchase deduplication and landing so
  const response=await handleApi(webhook(session),env,async(url,o)=>{payload=JSON.parse(o.body);return fakeResponse({events_received:1})});
  assert.equal(response.status,200);assert.equal(payload.data[0].event_source_url,'https://example.com/pasarela/checkout');assert.equal(payload.data[0].event_id,'purchase_'+session.id);assert.equal(payload.data[0].custom_data.value,50);
 });
+
+test('curso offers exactly USD 5 for three mornings and creates isolated Stripe Checkout',async()=>{
+ const c=await (await handleApi(new Request('https://example.com/api/config?event=curso'),env,never)).json();
+ assert.equal(c.course.amount,5);assert.equal(c.course.currency,'USD');assert.match(c.eventDate,/10, 11 y 12/);assert.match(c.eventTime,/10:00 a. m./);
+ let params;const response=await handleApi(new Request('https://example.com/api/checkout-curso',{method:'POST',headers:{origin:'https://example.com','Content-Type':'application/json'},body:JSON.stringify({requestId:'abcdefghijklmnopqrstuvwx',consent:true,utm_source:'meta'})}),env,async(url,o)=>{params=new URLSearchParams(o.body);return fakeResponse({id:'cs_test_abcdefghijkl',url:'https://checkout.stripe.com/c/test'})});
+ assert.equal(response.status,200);assert.equal((await response.json()).url,'https://checkout.stripe.com/c/test');assert.equal(params.get('line_items[0][price_data][unit_amount]'),'500');assert.equal(params.get('line_items[0][price_data][currency]'),'usd');assert.equal(params.get('metadata[course_id]'),'emet-reto-contenido-ia-2026-11-10');assert.equal(params.get('metadata[utm_source]'),'meta');assert.equal(params.get('success_url'),'https://example.com/gracias?event=curso&session_id={CHECKOUT_SESSION_ID}');assert.equal(params.get('line_items[1][quantity]'),null);
+});
+
+test('curso confirmation and webhook reject unpaid amounts and report USD purchase',async()=>{
+ const session={...baseSession,amount_total:500,currency:'usd',metadata:{course_id:'emet-reto-contenido-ia-2026-11-10',event_date:'2026-11-10',landing_page:'curso',marketing_consent:'true'}};
+ const res=await handleApi(new Request('https://example.com/api/session?session_id='+session.id),env,async()=>fakeResponse(session));const body=await res.json();assert.equal(body.paid,true);assert.equal(body.value,5);assert.equal(body.currency,'USD');assert.equal(body.courseId,session.metadata.course_id);
+ const wrong=await (await handleApi(new Request('https://example.com/api/session?session_id='+session.id),env,async()=>fakeResponse({...session,amount_total:600}))).json();assert.equal(wrong.paid,false);
+ let payload;await handleApi(webhook(session),env,async(url,o)=>{payload=JSON.parse(o.body);return fakeResponse({events_received:1})});assert.equal(payload.data[0].custom_data.currency,'USD');assert.equal(payload.data[0].custom_data.value,5);assert.equal(payload.data[0].event_source_url,'https://example.com/curso');
+});

@@ -1,4 +1,5 @@
 export const COURSE = { id: 'emet-contenido-ia-2026-10-01', name: 'Taller en vivo IA', amount: 5000, currency: 'pen' };
+export const RETO = { id: 'emet-reto-contenido-ia-2026-11-10', name: 'Reto de contenido con IA · 10, 11 y 12 de noviembre', amount: 500, currency: 'usd' };
 export const ORDER_BUMP = { id: 'grabacion-soporte-certificado', name: 'Aula virtual 1 año + comunidad + curso de Marketing Digital + soporte + grabación', amount: 1900, currency: 'pen' };
 const API_VERSION = '2026-08-26.dahlia';
 import defaults from '../public/site-settings.json' with {type: 'json'};
@@ -51,6 +52,7 @@ export async function verifySignature(raw,header,secret,now=Date.now()) {
 }
 async function sha256(value) {return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))].map(x=>x.toString(16).padStart(2,'0')).join('');}
 const hasOrderBump=s=>s?.metadata?.order_bump==='true';
+const isRetoPurchase=s=>s?.metadata?.course_id===RETO.id && s.payment_status==='paid' && s.amount_total===RETO.amount && s.currency===RETO.currency && s.mode==='payment';
 export function isCoursePurchase(s,c=COURSE,b=ORDER_BUMP) {const expected=c.amount+(hasOrderBump(s)?b.amount:0);return s?.metadata?.course_id===c.id && s.payment_status==='paid' && s.amount_total===expected && s.currency===c.currency && s.mode==='payment';}
 export async function sendPurchase(s,event,env,fetcher,c=COURSE,b=ORDER_BUMP,siteOrigin) {
  if(s.metadata.marketing_consent!=='true')return 'no_consent';
@@ -62,7 +64,7 @@ export async function sendPurchase(s,event,env,fetcher,c=COURSE,b=ORDER_BUMP,sit
  if(email)user.em=[await sha256(email)];
  for(const name of ['fbp','fbc'])if(s.metadata[name])user[name]=s.metadata[name];
  if(s.metadata.client_user_agent)user.client_user_agent=s.metadata.client_user_agent;
- const payload={data:[{event_name:'Purchase',event_time:event.created,event_id:'purchase_'+s.id,action_source:'website',event_source_url:siteOrigin+(s.metadata.landing_page==='pasarela'?'/pasarela/checkout':'/checkout'),user_data:user,custom_data:{currency:'PEN',value:s.amount_total/100,content_ids:[c.id],content_type:'product',num_items:hasOrderBump(s)?2:1}}]};
+ const payload={data:[{event_name:'Purchase',event_time:event.created,event_id:'purchase_'+s.id,action_source:'website',event_source_url:siteOrigin+(s.metadata.landing_page==='curso'?'/curso':s.metadata.landing_page==='pasarela'?'/pasarela/checkout':'/checkout'),user_data:user,custom_data:{currency:c.currency.toUpperCase(),value:s.amount_total/100,content_ids:[c.id],content_type:'product',num_items:hasOrderBump(s)?2:1}}]};
  if(env.META_TEST_EVENT_CODE)payload.test_event_code=env.META_TEST_EVENT_CODE;
  const r=await fetcher(`https://graph.facebook.com/${env.META_GRAPH_VERSION}/${env.META_PIXEL_ID}/events`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+env.META_ACCESS_TOKEN},body:JSON.stringify(payload)});
  if(!r.ok)throw Error('meta_delivery_failed');
@@ -75,8 +77,10 @@ export async function handleApi(request,env,fetcher=fetch) {
  const u=new URL(request.url), path=u.pathname, siteOrigin=origin(request);
  const analyticsId=env.GOOGLE_ANALYTICS_ID===undefined?'G-ZCY5PSC64X':env.GOOGLE_ANALYTICS_ID;
  try {
+  const reto=path==='/api/checkout-curso'||(path==='/api/config'&&u.searchParams.get('event')==='curso');
   const pasarela=path==='/api/checkout-pasarela'||(path==='/api/config'&&u.searchParams.get('event')==='pasarela');
   const cfg=settings(pasarela?{...env,EVENT_DAY:'12',EVENT_MONTH:'11',EVENT_YEAR:'2026',EVENT_DATE:'jueves 12 de noviembre de 2026',COURSE_PRICE_PEN:'50'}:env), c=cfg.course, bump=cfg.orderBump;
+  if(path==='/api/config' && request.method==='GET'&&reto)return json({checkoutEnabled:ready(env)&&Boolean(siteOrigin),pixelId:/^\d+$/.test(env.META_PIXEL_ID||'')?env.META_PIXEL_ID:null,googleAnalyticsId:/^G-[A-Z0-9]+$/.test(analyticsId)?analyticsId:null,tiktokPixelId:/^[A-Z0-9]{10,24}$/.test(env.TIKTOK_PIXEL_ID||'')?env.TIKTOK_PIXEL_ID:null,testMode:!env.STRIPE_SECRET_KEY?.startsWith('sk_live_'),course:{...RETO,amount:5,currency:'USD'},eventDate:'10, 11 y 12 de noviembre de 2026',eventTime:'10:00 a. m. · hora de Perú',whatsappUrl:cfg.whatsapp});
   if(path==='/api/config' && request.method==='GET')return json({checkoutEnabled:ready(env)&&Boolean(siteOrigin),publishableKey:ready(env)&&siteOrigin?env.STRIPE_PUBLISHABLE_KEY:null,pixelId:/^\d+$/.test(env.META_PIXEL_ID||'')?env.META_PIXEL_ID:null,googleAnalyticsId:/^G-[A-Z0-9]+$/.test(analyticsId)?analyticsId:null,tiktokPixelId:/^[A-Z0-9]{10,24}$/.test(env.TIKTOK_PIXEL_ID||'')?env.TIKTOK_PIXEL_ID:null,testMode:!env.STRIPE_SECRET_KEY?.startsWith('sk_live_'),course:{...c,amount:c.amount/100,currency:'PEN'},orderBump:{...bump,amount:bump.amount/100,currency:'PEN'},eventDate:cfg.date,eventTime:cfg.time,eventStartsAt:cfg.startsAt,eventDateISO:cfg.dateOnly,whatsappUrl:cfg.whatsapp,availableSeats:cfg.availableSeats});
   if(path==='/api/recent-activity' && request.method==='GET') {
    if(!ready(env)||!env.STRIPE_SECRET_KEY.startsWith('sk_live_'))return json({purchases:[]});
@@ -87,14 +91,19 @@ export async function handleApi(request,env,fetcher=fetch) {
    const purchases=eligible.map(s=>({firstName:firstName(s.customer_details?.name),province:customField(s,'city_province')})).filter(item=>item.firstName&&item.province).slice(0,8);
    return json({purchases});
   }
-  if(['/api/checkout','/api/checkout-pasarela'].includes(path) && request.method==='POST') {
+  if(['/api/checkout','/api/checkout-pasarela','/api/checkout-curso'].includes(path) && request.method==='POST') {
    if(!ready(env)||!siteOrigin)return json({error:'Las inscripciones online todavía no están habilitadas. Escríbenos para coordinar tu acceso.'},503);
    if(request.headers.get('origin')!==siteOrigin)return json({error:'Solicitud no autorizada.'},403);
    if(!request.headers.get('content-type')?.startsWith('application/json'))return json({error:'Formato no válido.'},415);
    const raw=await request.text();if(raw.length>8192)return json({error:'Solicitud demasiado grande.'},413);
    let body;try{body=JSON.parse(raw)}catch{return json({error:'Solicitud no válida.'},400)}
    if(!body || typeof body!=='object' || !/^[a-zA-Z0-9-]{20,80}$/.test(body.requestId||''))return json({error:'Recarga la página e inténtalo nuevamente.'},400);
-   const addBump=!pasarela&&body.orderBump===true;
+   const addBump=!pasarela&&!reto&&body.orderBump===true;
+   if(reto){
+    const params=new URLSearchParams({mode:'payment',locale:'es',success_url:siteOrigin+'/gracias?event=curso&session_id={CHECKOUT_SESSION_ID}',cancel_url:siteOrigin+'/curso', 'line_items[0][price_data][currency]':'usd','line_items[0][price_data][unit_amount]':'500','line_items[0][price_data][product_data][name]':RETO.name,'line_items[0][price_data][product_data][description]':'10, 11 y 12 de noviembre de 2026 · 10:00 a. m. · hora de Perú · En vivo','line_items[0][quantity]':'1','metadata[course_id]':RETO.id,'metadata[event_date]':'2026-11-10','metadata[landing_page]':'curso','metadata[marketing_consent]':String(body.consent===true),'payment_intent_data[metadata][course_id]':RETO.id});
+    if(body.consent===true){for(const name of ['fbp','fbc']){const v=clean(body[name]);if(/^fb\.\d+\.\d+\.[a-zA-Z0-9_-]+$/.test(v))params.set('metadata['+name+']',v)}params.set('metadata[client_user_agent]',clean(request.headers.get('user-agent'),450));for(const name of ['utm_source','utm_medium','utm_campaign','utm_content','utm_term'])if(body[name])params.set('metadata['+name+']',clean(body[name],200))}
+    const session=await stripe('checkout/sessions',env,fetcher,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','Idempotency-Key':'emet-curso-'+body.requestId},body:params.toString()});return json({url:session.url,sessionId:session.id});
+   }
    const params=new URLSearchParams({ui_mode:'embedded_page',mode:'payment',locale:'es',return_url:siteOrigin+'/gracias?session_id={CHECKOUT_SESSION_ID}',
     'line_items[0][price_data][currency]':c.currency,'line_items[0][price_data][unit_amount]':String(c.amount),'line_items[0][price_data][product_data][name]':c.name,'line_items[0][quantity]':'1',
     'metadata[course_id]':c.id,'metadata[event_date]':cfg.dateOnly,'metadata[order_bump]':String(addBump),'metadata[marketing_consent]':String(body.consent===true),'payment_intent_data[metadata][course_id]':c.id,'payment_intent_data[metadata][event_date]':cfg.dateOnly,'payment_intent_data[metadata][order_bump]':String(addBump),
@@ -113,22 +122,23 @@ export async function handleApi(request,env,fetcher=fetch) {
    if(!ready(env)||!siteOrigin)return json({error:'No podemos verificar el pago en este momento.'},503);
    const id=u.searchParams.get('session_id');if(!/^cs_(test_|live_)?[a-zA-Z0-9]{10,250}$/.test(id||''))return json({error:'Referencia de compra no válida.'},400);
    const session=await stripe('checkout/sessions/'+encodeURIComponent(id),env,fetcher);
-   if(session.metadata?.course_id!==c.id)return json({error:'Compra no encontrada.'},404);
-   const paid=isCoursePurchase(session,c,bump);
+   const product=session.metadata?.course_id===RETO.id?RETO:c;
+   if(session.metadata?.course_id!==product.id)return json({error:'Compra no encontrada.'},404);
+   const paid=product===RETO?isRetoPurchase(session):isCoursePurchase(session,c,bump);
    const trackableMode=session.livemode===true||Boolean(env.META_TEST_EVENT_CODE);
    let serverDelivery='not_attempted';
    if(paid&&session.metadata.marketing_consent==='true'&&trackableMode){
-    try{serverDelivery=await sendPurchase(session,{created:Number(session.created)||Math.floor(Date.now()/1000),livemode:session.livemode===true},env,fetcher,c,bump,siteOrigin);}catch{serverDelivery='failed';}
+    try{serverDelivery=await sendPurchase(session,{created:Number(session.created)||Math.floor(Date.now()/1000),livemode:session.livemode===true},env,fetcher,product,bump,siteOrigin);}catch{serverDelivery='failed';}
    }
-   return json({paid,status:session.status,paymentStatus:session.payment_status,value:session.amount_total/100,currency:session.currency?.toUpperCase(),orderBump:hasOrderBump(session),eventId:'purchase_'+session.id,allowTracking:session.metadata.marketing_consent==='true'&&trackableMode,serverDelivery});
+   return json({paid,status:session.status,paymentStatus:session.payment_status,value:session.amount_total/100,currency:session.currency?.toUpperCase(),orderBump:hasOrderBump(session),eventId:'purchase_'+session.id,courseId:product.id,allowTracking:session.metadata.marketing_consent==='true'&&trackableMode,serverDelivery});
   }
   if(path==='/api/stripe-webhook' && request.method==='POST') {
    if(!env.STRIPE_WEBHOOK_SECRET)return json({error:'Webhook no configurado.'},503);
    const raw=await request.text();if(raw.length>1000000)return json({error:'Payload too large'},413);
    if(!await verifySignature(raw,request.headers.get('stripe-signature'),env.STRIPE_WEBHOOK_SECRET))return json({error:'Invalid signature.'},400);
    const event=JSON.parse(raw);
-   if(['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type) && isCoursePurchase(event.data?.object,c,bump)) {
-    const delivery=await sendPurchase(event.data.object,event,env,fetcher,c,bump,siteOrigin);return json({received:true,delivery});
+   if(['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type) && (isCoursePurchase(event.data?.object,c,bump)||isRetoPurchase(event.data?.object))) {
+    const product=event.data.object.metadata.course_id===RETO.id?RETO:c;const delivery=await sendPurchase(event.data.object,event,env,fetcher,product,bump,siteOrigin);return json({received:true,delivery});
    }
    return json({received:true});
   }
