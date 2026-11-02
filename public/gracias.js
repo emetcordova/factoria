@@ -1,5 +1,6 @@
 import {track,consentAllowed} from './app.js';
-const $=id=>document.getElementById(id);const id=new URLSearchParams(location.search).get('session_id');
+const $=id=>document.getElementById(id);const query=new URLSearchParams(location.search),id=query.get('session_id');
+if(query.get('event')==='curso'){document.querySelectorAll('.checkout-header a').forEach(a=>{a.href='/curso';if(a.textContent.includes('Volver'))a.textContent='Volver al reto ↗'})}
 let confirmed=null;
 async function purchase(){if(!confirmed?.allowTracking||!consentAllowed())return;let sent=false;try{sent=localStorage.getItem(confirmed.eventId)==='sent'}catch{}if(sent)return;await track('Purchase',{currency:confirmed.currency,value:confirmed.value,content_ids:[confirmed.courseId||'emet-contenido-ia-2026-10-01'],content_type:'product',num_items:confirmed.numItems||1},confirmed.eventId);try{localStorage.setItem(confirmed.eventId,'sent')}catch{}}
 window.addEventListener('emet-consent',purchase);
