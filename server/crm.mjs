@@ -11,9 +11,11 @@ const configured=env=>Boolean(env.BLOB_READ_WRITE_TOKEN&&env.CRM_INITIAL_PASSWOR
 const hex=bytes=>[...new Uint8Array(bytes)].map(b=>b.toString(16).padStart(2,'0')).join('');
 const sha=async v=>hex(await crypto.subtle.digest('SHA-256',encoder.encode(v)));
 const constantEqual=async(a,b)=>{
- const key=await crypto.subtle.importKey('raw',encoder.encode('factoria-crm-comparison'),{name:'HMAC',hash:'SHA-256'},false,['sign','verify']);
- const [x,y]=await Promise.all([crypto.subtle.sign('HMAC',key,encoder.encode(a)),crypto.subtle.sign('HMAC',key,encoder.encode(b))]);
- return crypto.subtle.verify('HMAC',key,x,y);
+ const key=await crypto.subtle.importKey('raw',encoder.encode('factoria-crm-comparison'),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+ const [left,right]=await Promise.all([crypto.subtle.sign('HMAC',key,encoder.encode(a)),crypto.subtle.sign('HMAC',key,encoder.encode(b))]);
+ const x=new Uint8Array(left),y=new Uint8Array(right);let difference=0;
+ for(let i=0;i<x.length;i++)difference|=x[i]^y[i];
+ return difference===0;
 };
 async function hashPassword(password,salt){
  const key=await crypto.subtle.importKey('raw',encoder.encode(password),'PBKDF2',false,['deriveBits']);
