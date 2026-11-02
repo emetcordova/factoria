@@ -29,11 +29,11 @@ function applySiteConfig(c){
  const announcement=document.querySelector('.announcement strong');if(announcement)announcement.textContent=date.toUpperCase();
  const dateValue=new Date((c.eventDateISO||'2026-10-28')+'T12:00:00Z');const dateFormat=options=>new Intl.DateTimeFormat('es-PE',{...options,timeZone:'UTC'}).format(dateValue);
  const firstBenefit=document.querySelector('.benefit-bar span:first-child strong');if(firstBenefit)firstBenefit.textContent=dateFormat({day:'2-digit',month:'short'}).toUpperCase();
- const badge=document.querySelector('.offer-meta>span');if(badge){badge.replaceChildren(document.createTextNode(dateFormat({day:'2-digit'})),document.createElement('br'));const m=document.createElement('small');m.textContent=dateFormat({month:'long'}).toUpperCase();badge.append(m)}
- const cover=document.querySelector('.cover-bottom>span');if(cover)cover.textContent=dateFormat({day:'2-digit',month:'2-digit',year:'2-digit'});
+ const badge=document.querySelector('.offer-meta>span');if(badge&&!reto){badge.replaceChildren(document.createTextNode(dateFormat({day:'2-digit'})),document.createElement('br'));const m=document.createElement('small');m.textContent=dateFormat({month:'long'}).toUpperCase();badge.append(m)}
+ const cover=document.querySelector('.cover-bottom>span');if(cover&&!reto)cover.textContent=dateFormat({day:'2-digit',month:'2-digit',year:'2-digit'});
  document.querySelectorAll('[data-schedule]').forEach(el=>el.textContent=date+' · '+time);
  import('./showcase.js?v=showcase-5').then(m=>m.renderSchedule(c));
- const mobileDate=document.querySelector('.mobile-cta span');if(mobileDate)mobileDate.textContent=dateFormat({day:'numeric',month:'long'})+' · En vivo';
+ const mobileDate=document.querySelector('.mobile-cta span');if(mobileDate&&!reto)mobileDate.textContent=dateFormat({day:'numeric',month:'long'})+' · En vivo';
  const offerDate=document.querySelector('.offer-meta strong');if(offerDate)offerDate.textContent=date;
  const offerTime=document.querySelector('.offer-meta p');if(offerTime)offerTime.textContent='En vivo por Zoom · '+time;
  document.querySelectorAll('[data-order-bump]').forEach(el=>el.addEventListener('change',()=>setOrderBump(el.checked)));

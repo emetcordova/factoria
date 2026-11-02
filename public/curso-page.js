@@ -1,0 +1,14 @@
+import './showcase.js?v=showcase-5';
+import {configuration,consentAllowed,attribution,track,enablePixel} from './app.js';
+const $=id=>document.getElementById(id),loading=$('checkout-loading'),error=$('checkout-error');
+let checkout=null,stripe=null,config=null,generation=0;
+const selected=()=>({recordings:$('reto-recordings').checked,personalCall:$('reto-call').checked});
+function updateTotal(){const {recordings,personalCall}=selected();$('reto-total').textContent='US$'+(5+(recordings?7:0)+(personalCall?25:0))}
+function loadStripe(){return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://js.stripe.com/dahlia/stripe.js';s.onload=resolve;s.onerror=()=>reject(Error('No se pudo cargar Stripe. Revisa tu conexión e inténtalo de nuevo.'));document.head.append(s)})}
+async function mount(){const current=++generation;loading.hidden=false;error.hidden=true;if(checkout){checkout.destroy();checkout=null;$('checkout').replaceChildren()}
+ try{const newCheckout=await stripe.createEmbeddedCheckoutPage({fetchClientSecret:async()=>{const r=await fetch('/api/checkout-curso',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requestId:crypto.randomUUID(),consent:consentAllowed(),...selected(),...attribution()})});const data=await r.json();if(!r.ok||!data.clientSecret)throw Error(data.error||'No se pudo iniciar el pago.');return data.clientSecret}});if(current!==generation){newCheckout.destroy();return}checkout=newCheckout;newCheckout.mount('#checkout');loading.hidden=true}catch(e){if(current!==generation)return;loading.hidden=true;error.hidden=false;$('checkout-message').textContent=e.message||'No pudimos abrir el pago.'}}
+async function start(){try{const [c]=await Promise.all([configuration,loadStripe()]);config=c;if(!c.checkoutEnabled||!c.publishableKey)throw Error('Las inscripciones online no están disponibles en este momento.');$('test-mode').hidden=!c.testMode;stripe=window.Stripe(c.publishableKey);await mount()}catch(e){loading.hidden=true;error.hidden=false;$('checkout-message').textContent=e.message||'No pudimos abrir el pago.'}}
+for(const checkbox of [$('reto-recordings'),$('reto-call')])checkbox.addEventListener('change',async()=>{updateTotal();if(config){const options=selected();await track('InitiateCheckout',{content_ids:[config.course.id],content_type:'product',content_name:config.course.name,currency:'USD',value:5+(options.recordings?7:0)+(options.personalCall?25:0),num_items:1+Number(options.recordings)+Number(options.personalCall)},'checkout_'+crypto.randomUUID());await mount()}});
+$('retry-checkout').addEventListener('click',()=>stripe?mount():location.reload());
+document.querySelectorAll('[data-checkout-cta]').forEach(button=>button.addEventListener('click',()=>{$('inscripcion').scrollIntoView({behavior:'smooth',block:'start'})}));
+updateTotal();start();enablePixel();

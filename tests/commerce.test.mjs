@@ -73,16 +73,24 @@ test('pasarela confirmed payment preserves Purchase deduplication and landing so
  assert.equal(response.status,200);assert.equal(payload.data[0].event_source_url,'https://example.com/pasarela/checkout');assert.equal(payload.data[0].event_id,'purchase_'+session.id);assert.equal(payload.data[0].custom_data.value,50);
 });
 
-test('curso offers exactly USD 5 for three mornings and creates isolated Stripe Checkout',async()=>{
+test('curso config isolates the three mornings and exposes embedded Stripe',async()=>{
  const c=await (await handleApi(new Request('https://example.com/api/config?event=curso'),env,never)).json();
- assert.equal(c.course.amount,5);assert.equal(c.course.currency,'USD');assert.match(c.eventDate,/10, 11 y 12/);assert.match(c.eventTime,/10:00 a. m./);
- let params;const response=await handleApi(new Request('https://example.com/api/checkout-curso',{method:'POST',headers:{origin:'https://example.com','Content-Type':'application/json'},body:JSON.stringify({requestId:'abcdefghijklmnopqrstuvwx',consent:true,utm_source:'meta'})}),env,async(url,o)=>{params=new URLSearchParams(o.body);return fakeResponse({id:'cs_test_abcdefghijkl',url:'https://checkout.stripe.com/c/test'})});
- assert.equal(response.status,200);assert.equal((await response.json()).url,'https://checkout.stripe.com/c/test');assert.equal(params.get('line_items[0][price_data][unit_amount]'),'500');assert.equal(params.get('line_items[0][price_data][currency]'),'usd');assert.equal(params.get('metadata[course_id]'),'emet-reto-contenido-ia-2026-11-10');assert.equal(params.get('metadata[utm_source]'),'meta');assert.equal(params.get('success_url'),'https://example.com/gracias?event=curso&session_id={CHECKOUT_SESSION_ID}');assert.equal(params.get('line_items[1][quantity]'),null);
+ assert.equal(c.course.amount,5);assert.equal(c.course.currency,'USD');assert.equal(c.publishableKey,env.STRIPE_PUBLISHABLE_KEY);assert.equal(c.eventDateISO,'2026-11-10');assert.match(c.eventDate,/10, 11 y 12/);assert.match(c.eventTime,/10:00 a. m./);
+ const original=await (await handleApi(new Request('https://example.com/api/config'),env,never)).json();assert.equal(original.course.currency,'PEN');assert.equal(original.course.amount,50);
 });
 
-test('curso confirmation and webhook reject unpaid amounts and report USD purchase',async()=>{
- const session={...baseSession,amount_total:500,currency:'usd',metadata:{course_id:'emet-reto-contenido-ia-2026-11-10',event_date:'2026-11-10',landing_page:'curso',marketing_consent:'true'}};
- const res=await handleApi(new Request('https://example.com/api/session?session_id='+session.id),env,async()=>fakeResponse(session));const body=await res.json();assert.equal(body.paid,true);assert.equal(body.value,5);assert.equal(body.currency,'USD');assert.equal(body.courseId,session.metadata.course_id);
- const wrong=await (await handleApi(new Request('https://example.com/api/session?session_id='+session.id),env,async()=>fakeResponse({...session,amount_total:600}))).json();assert.equal(wrong.paid,false);
- let payload;await handleApi(webhook(session),env,async(url,o)=>{payload=JSON.parse(o.body);return fakeResponse({events_received:1})});assert.equal(payload.data[0].custom_data.currency,'USD');assert.equal(payload.data[0].custom_data.value,5);assert.equal(payload.data[0].event_source_url,'https://example.com/curso');
+test('curso creates four accurate USD checkout combinations',async()=>{
+ for(const [recordings,personalCall,total,items] of [[false,false,500,1],[true,false,1200,2],[false,true,3000,2],[true,true,3700,3]]){
+  let params;const response=await handleApi(new Request('https://example.com/api/checkout-curso',{method:'POST',headers:{origin:'https://example.com','Content-Type':'application/json'},body:JSON.stringify({requestId:'abcdefghijklmnopqrstuvwx',consent:true,recordings,personalCall,utm_source:'meta'})}),env,async(url,o)=>{params=new URLSearchParams(o.body);return fakeResponse({id:'cs_test_abcdefghijkl',client_secret:'cs_test_secret'})});
+  assert.equal(response.status,200);assert.equal((await response.json()).clientSecret,'cs_test_secret');assert.equal(params.get('ui_mode'),'embedded_page');assert.equal(params.get('return_url'),'https://example.com/gracias?event=curso&session_id={CHECKOUT_SESSION_ID}');assert.equal(params.get('line_items[0][price_data][currency]'),'usd');assert.equal(params.get('metadata[recordings]'),String(recordings));assert.equal(params.get('metadata[personal_call]'),String(personalCall));assert.equal(params.get('metadata[utm_source]'),'meta');assert.equal(params.get('phone_number_collection[enabled]'),personalCall?'true':null);
+  const amounts=Array.from({length:items},(_,i)=>Number(params.get(`line_items[${i}][price_data][unit_amount]`)));assert.equal(amounts.reduce((a,b)=>a+b,0),total);assert.equal(params.get(`line_items[${items}][quantity]`),null);
+  const session={...baseSession,amount_total:total,currency:'usd',metadata:{course_id:'emet-reto-contenido-ia-2026-11-10',event_date:'2026-11-10',landing_page:'curso',marketing_consent:'true',recordings:String(recordings),personal_call:String(personalCall)}};
+  const res=await handleApi(new Request('https://example.com/api/session?session_id='+session.id),env,async()=>fakeResponse(session));const body=await res.json();assert.equal(body.paid,true);assert.equal(body.value,total/100);assert.equal(body.currency,'USD');assert.equal(body.numItems,items);assert.equal(body.recordings,recordings);assert.equal(body.personalCall,personalCall);
+  const wrong=await (await handleApi(new Request('https://example.com/api/session?session_id='+session.id),env,async()=>fakeResponse({...session,amount_total:total+100}))).json();assert.equal(wrong.paid,false);
+ }
+});
+
+test('curso webhook reports selected add-ons in USD purchase event',async()=>{
+ const session={...baseSession,amount_total:3700,currency:'usd',metadata:{course_id:'emet-reto-contenido-ia-2026-11-10',event_date:'2026-11-10',landing_page:'curso',marketing_consent:'true',recordings:'true',personal_call:'true'}};
+ let payload;await handleApi(webhook(session),env,async(url,o)=>{payload=JSON.parse(o.body);return fakeResponse({events_received:1})});assert.equal(payload.data[0].custom_data.currency,'USD');assert.equal(payload.data[0].custom_data.value,37);assert.equal(payload.data[0].custom_data.num_items,3);assert.equal(payload.data[0].event_source_url,'https://example.com/curso');
 });
