@@ -132,6 +132,22 @@ export async function handleApi(request,env,fetcher=fetch) {
    const session=await stripe('checkout/sessions',env,fetcher,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','Idempotency-Key':'emet-'+body.requestId},body:params.toString()});
    return json({clientSecret:session.client_secret,sessionId:session.id});
   }
+  if(path==='/api/curso-extras' && request.method==='POST'){
+   if(!ready(env)||!siteOrigin)return json({error:'El pago no está disponible.'},503);
+   if(request.headers.get('origin')!==siteOrigin)return json({error:'Solicitud no autorizada.'},403);
+   if(!request.headers.get('content-type')?.startsWith('application/json'))return json({error:'Formato no válido.'},415);
+   const raw=await request.text();if(raw.length>2048)return json({error:'Solicitud demasiado grande.'},413);
+   let body;try{body=JSON.parse(raw)}catch{return json({error:'Solicitud no válida.'},400)}
+   const id=body?.sessionId;
+   if(!/^cs_(test_|live_)?[a-zA-Z0-9]{10,250}$/.test(id||'')||typeof body.recordings!=='boolean'||typeof body.personalCall!=='boolean'||typeof body.clientSecret!=='string'||!body.clientSecret)return json({error:'Selección no válida.'},400);
+   const session=await stripe('checkout/sessions/'+encodeURIComponent(id),env,fetcher);
+   if(session.metadata?.course_id!==RETO.id||session.status!=='open'||session.ui_mode!=='elements'||session.client_secret!==body.clientSecret)return json({error:'Actualiza el formulario para continuar.'},409);
+   const params=new URLSearchParams({'metadata[recordings]':String(body.recordings),'metadata[personal_call]':String(body.personalCall),'payment_intent_data[metadata][recordings]':String(body.recordings),'payment_intent_data[metadata][personal_call]':String(body.personalCall)});
+   const items=[RETO,...(body.recordings?[RETO_RECORDINGS]:[]),...(body.personalCall?[RETO_CALL]:[])];
+   items.forEach((item,i)=>{params.set(`line_items[${i}][price_data][currency]`,'usd');params.set(`line_items[${i}][price_data][unit_amount]`,String(item.amount));params.set(`line_items[${i}][price_data][product_data][name]`,item.name);params.set(`line_items[${i}][quantity]`,'1')});
+   const updated=await stripe('checkout/sessions/'+encodeURIComponent(id),env,fetcher,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:params.toString()});
+   return json({updated:true,amount:updated.amount_total});
+  }
   if(path==='/api/curso-buyer' && request.method==='POST'){
    if(!ready(env)||!siteOrigin)return json({error:'El pago no está disponible.'},503);
    if(request.headers.get('origin')!==siteOrigin)return json({error:'Solicitud no autorizada.'},403);

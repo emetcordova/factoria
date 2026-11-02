@@ -112,3 +112,20 @@ test('curso stores buyer details only for the matching open checkout',async()=>{
 });
 
 test('curso purchase notifications use only paid Stripe records with real names',async()=>{const live={...env,STRIPE_SECRET_KEY:'sk_live_example',STRIPE_PUBLISHABLE_KEY:'pk_live_example'};const session={...baseSession,id:'cs_live_realbuyer12345',amount_total:1200,currency:'usd',created:1793500000,custom_fields:[],metadata:{course_id:'emet-reto-contenido-ia-2026-11-10',recordings:'true',personal_call:'false',buyer_name:'Ana Pérez',marketing_consent:'false'},customer_details:{email:'ana@example.com'}};const unpaid={...session,id:'cs_live_unpaid12345',payment_status:'unpaid',metadata:{...session.metadata,buyer_name:'Inventada Falsa'}};const r=await handleApi(new Request('https://example.com/api/recent-activity?event=curso'),live,async()=>fakeResponse({data:[session,unpaid]}));const d=await r.json();assert.deepEqual(d.purchases,[{firstName:'Ana',province:null,product:'reto',recordings:true,created:1793500000}]);assert.equal(JSON.stringify(d).includes('Inventada'),false)});
+
+test('curso extras update the same session with server-controlled prices for all combinations',async()=>{
+ for(const [recordings,personalCall,total] of [[false,false,500],[true,false,1200],[false,true,3000],[true,true,3700]]){
+  let params,calls=0;
+  const request=new Request('https://example.com/api/curso-extras',{method:'POST',headers:{origin:'https://example.com','content-type':'application/json'},body:JSON.stringify({sessionId:baseSession.id,clientSecret:'secret',recordings,personalCall,amount:1})});
+  const r=await handleApi(request,env,async(url,o)=>{calls++;assert.equal(url,'https://api.stripe.com/v1/checkout/sessions/'+baseSession.id);if(!o?.method)return fakeResponse({status:'open',ui_mode:'elements',client_secret:'secret',metadata:{course_id:RETO.id}});params=new URLSearchParams(o.body);return fakeResponse({amount_total:total})});
+  assert.equal(r.status,200);assert.equal(calls,2);assert.equal((await r.json()).amount,total);
+  let sum=0;for(let i=0;params.has(`line_items[${i}][quantity]`);i++)sum+=Number(params.get(`line_items[${i}][price_data][unit_amount]`));assert.equal(sum,total);
+  assert.equal(params.get('metadata[recordings]'),String(recordings));assert.equal(params.get('metadata[personal_call]'),String(personalCall));
+ }
+});
+test('curso extras reject foreign requests and mismatched, paid or unrelated sessions',async()=>{
+ for(const variation of [{client_secret:'wrong'},{status:'complete'},{metadata:{course_id:'other'}},{ui_mode:'hosted_page'}]){
+  const r=await handleApi(new Request('https://example.com/api/curso-extras',{method:'POST',headers:{origin:'https://example.com','content-type':'application/json'},body:JSON.stringify({sessionId:baseSession.id,clientSecret:'secret',recordings:true,personalCall:false})}),env,async(url,o)=>{assert.notEqual(o?.method,'POST');return fakeResponse({status:'open',ui_mode:'elements',client_secret:'secret',metadata:{course_id:RETO.id},...variation})});assert.equal(r.status,409);
+ }
+ const r=await handleApi(new Request('https://example.com/api/curso-extras',{method:'POST',headers:{origin:'https://evil.example'}}),env,never);assert.equal(r.status,403);
+});
