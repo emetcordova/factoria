@@ -13,7 +13,17 @@ if(video){
  };
  const play=()=>video.play().catch(()=>{sync()});
  const autoPlay=()=>{if(!userPaused&&!document.hidden&&video.paused)play()};
- const toggle=()=>{if(video.paused){userPaused=false;play()}else{userPaused=true;video.pause()}};
+ const toggle=()=>{
+  if(video.paused||video.muted){
+   video.muted=false;
+   userPaused=false;
+   sync();
+   play();
+  }else{
+   userPaused=true;
+   video.pause();
+  }
+ };
  video.addEventListener('click',toggle);
  video.addEventListener('keydown',event=>{if(event.key===' '||event.key==='Enter'){event.preventDefault();toggle()}});
  for(const event of ['play','pause','volumechange','error'])video.addEventListener(event,sync);
