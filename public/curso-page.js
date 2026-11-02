@@ -27,7 +27,7 @@ async function mount(){const current=++generation;payButton.disabled=true;loadin
   if(session.currency?.toLowerCase()!=='usd'||session.total?.total?.minorUnitsAmount!==expected)throw Error('El importe no coincide con tu selección. Recarga la página.');
   sessionRefreshAt=Date.now()+23*60*60*1000;actions=result.actions;checkoutSessionId=identity.sessionId;checkoutSecret=identity.clientSecret;
   contactElement=sdk.createContactDetailsElement();contactElement.mount('#contact-details-element');
-  paymentElement=sdk.createPaymentElement({layout:{type:'accordion',defaultCollapsed:false,radios:'never'},paymentMethodOrder:['card'],wallets:{applePay:'never',googlePay:'never',link:'never'}});paymentElement.mount('#payment-element');
+  paymentElement=sdk.createPaymentElement({layout:{type:'accordion',defaultCollapsed:false,radios:'never'},paymentMethodOrder:['card'],wallets:{applePay:'auto',googlePay:'auto',link:'never'}});paymentElement.mount('#payment-element');
   sdk.on('change',state=>{if(current===generation&&!confirming)refreshPayButton()});
   syncedOptions=optionsKey(selectedOptions);loading.hidden=true;refreshPayButton();if(optionsKey(selected())!==syncedOptions)syncExtras();
  }catch(e){if(current!==generation)return;loading.hidden=true;error.hidden=false;$('checkout-message').textContent=e.message||'No pudimos abrir el pago.'}
