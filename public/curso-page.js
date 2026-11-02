@@ -24,7 +24,7 @@ async function mount(){if(Date.now()>=deadline)return;const current=++generation
   if(session.currency?.toLowerCase()!=='usd'||session.total?.total?.minorUnitsAmount!==expected)throw Error('El importe no coincide con tu selección. Recarga la página.');
   actions=result.actions;checkoutSessionId=identity.sessionId;checkoutSecret=identity.clientSecret;
   contactElement=sdk.createContactDetailsElement();contactElement.mount('#contact-details-element');
-  paymentElement=sdk.createPaymentElement();paymentElement.mount('#payment-element');
+  paymentElement=sdk.createPaymentElement({layout:{type:'accordion',defaultCollapsed:false,radios:'never'},paymentMethodOrder:['card'],wallets:{applePay:'never',googlePay:'never',link:'never'}});paymentElement.mount('#payment-element');
   sdk.on('change',state=>{if(current===generation&&!confirming&&Date.now()<deadline)payButton.disabled=!state.canConfirm});
   payButton.disabled=!session.canConfirm;loading.hidden=true;
  }catch(e){if(current!==generation)return;loading.hidden=true;error.hidden=false;$('checkout-message').textContent=e.message||'No pudimos abrir el pago.'}
