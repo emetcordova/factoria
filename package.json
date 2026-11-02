@@ -1,1 +1,1 @@
-{"name":"emet-contenido-ia","version":"2.0.0","private":true,"type":"module","engines":{"node":">=22"},"scripts":{"build":"node scripts/build.mjs","test":"node --test tests/*.test.mjs"}}
+{"name":"emet-contenido-ia","version":"2.0.0","private":true,"type":"module","engines":{"node":">=22"},"scripts":{"build":"node scripts/build.mjs","test":"node --test tests/*.test.mjs"},"dependencies":{"@vercel/blob":"^2.8.2"}}

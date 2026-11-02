@@ -81,6 +81,8 @@ export async function handleApi(request,env,fetcher=fetch) {
  const u=new URL(request.url), path=u.pathname, siteOrigin=origin(request);
  const analyticsId=env.GOOGLE_ANALYTICS_ID===undefined?'G-ZCY5PSC64X':env.GOOGLE_ANALYTICS_ID;
  try {
+  if(path.startsWith('/api/panel/')){const {handlePanelApi}=await import('./crm.mjs');return handlePanelApi(request,env)}
+  if(path==='/api/crm/paid'){const {handlePaidApi}=await import('./crm.mjs');return handlePaidApi(request,env)}
   const reto=path==='/api/checkout-curso'||(path==='/api/config'&&u.searchParams.get('event')==='curso');
   const pasarela=path==='/api/checkout-pasarela'||(path==='/api/config'&&u.searchParams.get('event')==='pasarela');
   const cfg=settings(pasarela?{...env,EVENT_DAY:'12',EVENT_MONTH:'11',EVENT_YEAR:'2026',EVENT_DATE:'jueves 12 de noviembre de 2026',COURSE_PRICE_PEN:'50'}:env), c=cfg.course, bump=cfg.orderBump;
@@ -148,7 +150,7 @@ export async function handleApi(request,env,fetcher=fetch) {
    const updated=await stripe('checkout/sessions/'+encodeURIComponent(id),env,fetcher,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:params.toString()});
    return json({updated:true,amount:updated.amount_total});
   }
-  if(path==='/api/curso-buyer' && request.method==='POST'){
+  if((path==='/api/curso-buyer'||path==='/api/curso-lead') && request.method==='POST'){
    if(!ready(env)||!siteOrigin)return json({error:'El pago no está disponible.'},503);
    if(request.headers.get('origin')!==siteOrigin)return json({error:'Solicitud no autorizada.'},403);
    if(!request.headers.get('content-type')?.startsWith('application/json'))return json({error:'Formato no válido.'},415);
@@ -157,9 +159,15 @@ export async function handleApi(request,env,fetcher=fetch) {
    const id=body?.sessionId,name=clean(body?.name,100).trim(),phone=clean(body?.whatsapp,30).trim();
    if(!/^cs_(test_|live_)?[a-zA-Z0-9]{10,250}$/.test(id||'')||name.split(/\s+/).length<2||!/^\+[1-9]\d{7,14}$/.test(phone))return json({error:'Completa tu nombre y WhatsApp para continuar.'},400);
    const session=await stripe('checkout/sessions/'+encodeURIComponent(id),env,fetcher);
-   if(session.metadata?.course_id!==RETO.id||session.status!=='open'||session.client_secret!==body.clientSecret||session.metadata?.recordings!==String(body.recordings===true)||session.metadata?.personal_call!==String(body.personalCall===true))return json({error:'La sesión de pago cambió. Actualiza la página.'},409);
+   if(session.metadata?.course_id!==RETO.id||session.status!=='open'||session.client_secret!==body.clientSecret)return json({error:'La sesión de pago cambió. Actualiza la página.'},409);
+   if(path==='/api/curso-lead'){
+    if(env.BLOB_READ_WRITE_TOKEN){const {saveLead}=await import('./crm.mjs');await saveLead(env,id,{name,whatsapp:phone,recordings:session.metadata?.recordings==='true',personalCall:session.metadata?.personal_call==='true',paid:false})}
+    return json({saved:true});
+   }
+   if(session.metadata?.recordings!==String(body.recordings===true)||session.metadata?.personal_call!==String(body.personalCall===true))return json({error:'La sesión de pago cambió. Actualiza la página.'},409);
    const params=new URLSearchParams({'metadata[buyer_name]':name,'metadata[whatsapp]':phone});
    await stripe('checkout/sessions/'+encodeURIComponent(id),env,fetcher,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:params.toString()});
+   if(env.BLOB_READ_WRITE_TOKEN){const {saveLead}=await import('./crm.mjs');await saveLead(env,id,{name,whatsapp:phone,recordings:body.recordings===true,personalCall:body.personalCall===true,paid:false})}
    return json({updated:true});
   }
   if(path==='/api/session' && request.method==='GET') {
@@ -169,6 +177,7 @@ export async function handleApi(request,env,fetcher=fetch) {
    const product=session.metadata?.course_id===RETO.id?RETO:c;
    if(session.metadata?.course_id!==product.id)return json({error:'Compra no encontrada.'},404);
    const paid=product===RETO?isRetoPurchase(session):isCoursePurchase(session,c,bump);
+   if(paid&&product===RETO&&env.BLOB_READ_WRITE_TOKEN){const {saveLead}=await import('./crm.mjs');await saveLead(env,session.id,{name:clean(session.metadata?.buyer_name||session.customer_details?.name,100),email:clean(session.customer_details?.email,200),whatsapp:clean(session.metadata?.whatsapp,30),recordings:retoOptions(session).recordings,personalCall:retoOptions(session).personalCall,amount:session.amount_total/100,paid:true,paidAt:new Date((Number(session.created)||Date.now()/1000)*1000).toISOString()})}
    const trackableMode=session.livemode===true||Boolean(env.META_TEST_EVENT_CODE);
    let serverDelivery='not_attempted';
    if(paid&&session.metadata.marketing_consent==='true'&&trackableMode){
@@ -182,7 +191,9 @@ export async function handleApi(request,env,fetcher=fetch) {
    if(!await verifySignature(raw,request.headers.get('stripe-signature'),env.STRIPE_WEBHOOK_SECRET))return json({error:'Invalid signature.'},400);
    const event=JSON.parse(raw);
    if(['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type) && (isCoursePurchase(event.data?.object,c,bump)||isRetoPurchase(event.data?.object))) {
-    const product=event.data.object.metadata.course_id===RETO.id?RETO:c;const delivery=await sendPurchase(event.data.object,event,env,fetcher,product,bump,siteOrigin);return json({received:true,delivery});
+    const s=event.data.object,product=s.metadata.course_id===RETO.id?RETO:c;
+    if(product===RETO&&env.BLOB_READ_WRITE_TOKEN){const {saveLead}=await import('./crm.mjs');await saveLead(env,s.id,{name:clean(s.metadata?.buyer_name||s.customer_details?.name,100),email:clean(s.customer_details?.email,200),whatsapp:clean(s.metadata?.whatsapp,30),recordings:retoOptions(s).recordings,personalCall:retoOptions(s).personalCall,amount:s.amount_total/100,paid:true,paidAt:new Date((Number(event.created)||Date.now()/1000)*1000).toISOString()})}
+    const delivery=await sendPurchase(s,event,env,fetcher,product,bump,siteOrigin);return json({received:true,delivery});
    }
    return json({received:true});
   }
