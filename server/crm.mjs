@@ -11,7 +11,7 @@ const configured=env=>Boolean(env.BLOB_READ_WRITE_TOKEN&&env.CRM_INITIAL_PASSWOR
 const hex=bytes=>[...new Uint8Array(bytes)].map(b=>b.toString(16).padStart(2,'0')).join('');
 const sha=async v=>hex(await crypto.subtle.digest('SHA-256',encoder.encode(v)));
 const constantEqual=async(a,b)=>{
- const key=await crypto.subtle.importKey('raw',encoder.encode('factoria-crm-comparison'),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+ const key=await crypto.subtle.importKey('raw',encoder.encode('factoria-crm-comparison'),{name:'HMAC',hash:'SHA-256'},false,['sign','verify']);
  const [x,y]=await Promise.all([crypto.subtle.sign('HMAC',key,encoder.encode(a)),crypto.subtle.sign('HMAC',key,encoder.encode(b))]);
  return crypto.subtle.verify('HMAC',key,x,y);
 };
