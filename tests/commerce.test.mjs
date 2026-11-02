@@ -4,7 +4,7 @@ import {createHmac} from 'node:crypto';
 import {handleApi,verifySignature,COURSE,RETO,ORDER_BUMP} from '../server/commerce.mjs';
 
 const env={SITE_URL:'https://example.com',STRIPE_SECRET_KEY:'sk_test_example',STRIPE_PUBLISHABLE_KEY:'pk_test_example',STRIPE_WEBHOOK_SECRET:'whsec_example',META_PIXEL_ID:'12345',META_ACCESS_TOKEN:'test-token',META_GRAPH_VERSION:'v23.0',META_TEST_EVENT_CODE:'TEST123'};
-const baseSession={id:'cs_test_abcdefghijklm',mode:'payment',status:'complete',payment_status:'paid',amount_total:5000,currency:'pen',livemode:true,metadata:{course_id:COURSE.id,event_date:'2026-10-28',order_bump:'false',marketing_consent:'true'},customer_details:{name:'Jorge Example',email:'Person@example.com'},custom_fields:[{key:'city_province',text:{value:'Lima'}}]};
+const baseSession={id:'cs_test_abcdefghijklm',mode:'payment',status:'complete',payment_status:'paid',amount_total:5000,currency:'pen',livemode:true,metadata:{course_id:COURSE.id,event_date:'2026-11-12',order_bump:'false',marketing_consent:'true'},customer_details:{name:'Jorge Example',email:'Person@example.com'},custom_fields:[{key:'city_province',text:{value:'Lima'}}]};
 const bumpSession={...baseSession,amount_total:6900,metadata:{...baseSession.metadata,order_bump:'true'}};
 const fakeResponse=d=>new Response(JSON.stringify(d),{headers:{'Content-Type':'application/json'}});
 const req=body=>new Request('https://example.com/api/checkout',{method:'POST',headers:{origin:'https://example.com','Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -14,14 +14,14 @@ function webhook(session=baseSession,type='checkout.session.completed'){
  return new Request('https://example.com/api/stripe-webhook',{method:'POST',headers:{'stripe-signature':`t=${t},v1=${signature}`},body:payload});
 }
 
-test('public config is PEN, S/50 base, S/19 bump and 28 October Peru schedule',async()=>{
+test('public config is PEN, S/50 base, S/19 bump and 12 November Peru schedule',async()=>{
  const data=await (await handleApi(new Request('https://example.com/api/config'),env,never)).json();
- assert.equal(data.checkoutEnabled,true);assert.equal(data.course.amount,50);assert.equal(data.course.currency,'PEN');assert.equal(data.orderBump.amount,19);assert.equal(data.orderBump.currency,'PEN');assert.equal(data.whatsappUrl,'https://chat.whatsapp.com/CFCV2SkykSOGxlmUVtsIYg');assert.equal(data.eventDateISO,'2026-10-28');assert.equal(data.eventTime,'7:00 p. m. a 10:00 p. m.');assert.equal(data.STRIPE_SECRET_KEY,undefined);assert.equal(data.META_ACCESS_TOKEN,undefined);
+ assert.equal(data.checkoutEnabled,true);assert.equal(data.course.amount,50);assert.equal(data.course.currency,'PEN');assert.equal(data.orderBump.amount,19);assert.equal(data.orderBump.currency,'PEN');assert.equal(data.whatsappUrl,'https://chat.whatsapp.com/CFCV2SkykSOGxlmUVtsIYg');assert.equal(data.eventDateISO,'2026-11-12');assert.equal(data.eventTime,'7:00 p. m. a 10:00 p. m.');assert.equal(data.STRIPE_SECRET_KEY,undefined);assert.equal(data.META_ACCESS_TOKEN,undefined);
 });
 
 test('checkout without bump creates one PEN item for S/50 and preserves attribution metadata',async()=>{
  let params;const r=await handleApi(req({requestId:'abcdefghijklmnopqrstuvwx',consent:true,orderBump:false,utm_source:'meta',utm_campaign:'octubre'}),env,async(url,o)=>{assert.equal(url,'https://api.stripe.com/v1/checkout/sessions');params=new URLSearchParams(o.body);return fakeResponse({client_secret:'secret',id:baseSession.id})});
- assert.equal(r.status,200);assert.equal(params.get('line_items[0][price_data][currency]'),'pen');assert.equal(params.get('line_items[0][price_data][unit_amount]'),'5000');assert.equal(params.get('line_items[1][price_data][unit_amount]'),null);assert.equal(params.get('metadata[order_bump]'),'false');assert.equal(params.get('metadata[event_date]'),'2026-10-28');assert.equal(params.get('metadata[utm_source]'),'meta');assert.equal(params.get('metadata[utm_campaign]'),'octubre');assert.equal(params.get('custom_fields[0][key]'),'city_province');assert.equal(params.get('custom_fields[0][label][custom]'),'Ciudad / provincia');
+ assert.equal(r.status,200);assert.equal(params.get('line_items[0][price_data][currency]'),'pen');assert.equal(params.get('line_items[0][price_data][unit_amount]'),'5000');assert.equal(params.get('line_items[1][price_data][unit_amount]'),null);assert.equal(params.get('metadata[order_bump]'),'false');assert.equal(params.get('metadata[event_date]'),'2026-11-12');assert.equal(params.get('metadata[utm_source]'),'meta');assert.equal(params.get('metadata[utm_campaign]'),'octubre');assert.equal(params.get('custom_fields[0][key]'),'city_province');assert.equal(params.get('custom_fields[0][label][custom]'),'Ciudad / provincia');
 });
 
 test('checkout with bump creates S/50 + S/19 items for S/69 and identifies bump',async()=>{
@@ -59,7 +59,7 @@ test('recent activity falls back to previous workshop and never fabricates names
 test('pasarela config isolates November 12 schedule and S/50 from the original offer',async()=>{
  const data=await (await handleApi(new Request('https://example.com/api/config?event=pasarela'),{...env,EVENT_DAY:'5',COURSE_PRICE_PEN:'99'},never)).json();
  assert.equal(data.eventDateISO,'2026-11-12');assert.equal(data.eventDate,'jueves 12 de noviembre de 2026');assert.equal(data.eventStartsAt,'2026-11-12T19:00:00-05:00');assert.equal(data.course.amount,50);
- const original=await (await handleApi(new Request('https://example.com/api/config'),env,never)).json();assert.equal(original.eventDateISO,'2026-10-28');
+ const original=await (await handleApi(new Request('https://example.com/api/config'),env,never)).json();assert.equal(original.eventDateISO,'2026-11-12');
 });
 
 test('pasarela creates custom Stripe Elements checkout for S/50 and preserves conversion metadata',async()=>{
@@ -75,7 +75,7 @@ test('pasarela confirmed payment preserves Purchase deduplication and landing so
 
 test('curso config isolates the three mornings and exposes embedded Stripe',async()=>{
  const c=await (await handleApi(new Request('https://example.com/api/config?event=curso'),env,never)).json();
- assert.equal(c.course.amount,5);assert.equal(c.course.currency,'USD');assert.equal(c.publishableKey,env.STRIPE_PUBLISHABLE_KEY);assert.equal(c.eventDateISO,'2026-11-10');assert.match(c.eventDate,/10, 11 y 12/);assert.match(c.eventTime,/10:00 a. m./);
+ assert.equal(c.course.amount,5);assert.equal(c.course.currency,'USD');assert.equal(c.publishableKey,env.STRIPE_PUBLISHABLE_KEY);assert.equal(c.eventDateISO,'2026-11-16');assert.match(c.eventDate,/16, 17 y 18/);assert.match(c.eventTime,/10:00 a. m./);
  const original=await (await handleApi(new Request('https://example.com/api/config'),env,never)).json();assert.equal(original.course.currency,'PEN');assert.equal(original.course.amount,50);
 });
 
