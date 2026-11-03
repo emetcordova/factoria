@@ -111,6 +111,16 @@ test('curso stores buyer details only for the matching open checkout',async()=>{
  updated=null;const wrong=await handleApi(request({...payload,clientSecret:'wrong'}),env,fetcher);assert.equal(wrong.status,409);assert.equal(updated,null);
 });
 
+test('curso accepts a partial lead only for its own open checkout session',async()=>{
+ const session={id:'cs_test_abcdefghijkl',client_secret:'cs_test_secret',status:'open',metadata:{course_id:RETO.id,recordings:'false',personal_call:'false'}};
+ const request=body=>new Request('https://example.com/api/curso-lead',{method:'POST',headers:{origin:'https://example.com','Content-Type':'application/json'},body:JSON.stringify({sessionId:session.id,clientSecret:session.client_secret,...body})});
+ const fetcher=async()=>fakeResponse(session);
+ assert.equal((await handleApi(request({name:'Ana'}),env,fetcher)).status,200);
+ assert.equal((await handleApi(request({email:'ana@example.com',whatsapp:'+519123'}),env,fetcher)).status,200);
+ assert.equal((await handleApi(request({name:'A'}),env,fetcher)).status,400);
+ assert.equal((await handleApi(request({name:'Ana',clientSecret:'wrong'}),env,fetcher)).status,409);
+});
+
 test('curso purchase notifications use only paid Stripe records with real names',async()=>{const live={...env,STRIPE_SECRET_KEY:'sk_live_example',STRIPE_PUBLISHABLE_KEY:'pk_live_example'};const session={...baseSession,id:'cs_live_realbuyer12345',amount_total:1200,currency:'usd',created:1793500000,custom_fields:[],metadata:{course_id:'emet-reto-contenido-ia-2026-11-10',recordings:'true',personal_call:'false',buyer_name:'Ana Pérez',marketing_consent:'false'},customer_details:{email:'ana@example.com'}};const unpaid={...session,id:'cs_live_unpaid12345',payment_status:'unpaid',metadata:{...session.metadata,buyer_name:'Inventada Falsa'}};const r=await handleApi(new Request('https://example.com/api/recent-activity?event=curso'),live,async()=>fakeResponse({data:[session,unpaid]}));const d=await r.json();assert.deepEqual(d.purchases,[{firstName:'Ana',province:null,product:'reto',recordings:true,created:1793500000}]);assert.equal(JSON.stringify(d).includes('Inventada'),false)});
 
 test('curso extras update the same session with server-controlled prices for all combinations',async()=>{

@@ -83,6 +83,7 @@ export async function handleApi(request,env,fetcher=fetch) {
  try {
   if(path.startsWith('/api/panel/')){const {handlePanelApi}=await import('./crm.mjs');return handlePanelApi(request,env)}
   if(path==='/api/crm/paid'){const {handlePaidApi}=await import('./crm.mjs');return handlePaidApi(request,env)}
+  if(path==='/api/crm/probe'){const {cleanupProbe}=await import('./crm.mjs');return cleanupProbe(request,env)}
   const reto=path==='/api/checkout-curso'||(path==='/api/config'&&u.searchParams.get('event')==='curso');
   const pasarela=path==='/api/checkout-pasarela'||(path==='/api/config'&&u.searchParams.get('event')==='pasarela');
   const cfg=settings(pasarela?{...env,EVENT_DAY:'12',EVENT_MONTH:'11',EVENT_YEAR:'2026',EVENT_DATE:'jueves 12 de noviembre de 2026',COURSE_PRICE_PEN:'50'}:env), c=cfg.course, bump=cfg.orderBump;
@@ -156,18 +157,21 @@ export async function handleApi(request,env,fetcher=fetch) {
    if(!request.headers.get('content-type')?.startsWith('application/json'))return json({error:'Formato no válido.'},415);
    const raw=await request.text();if(raw.length>2048)return json({error:'Solicitud demasiado grande.'},413);
    let body;try{body=JSON.parse(raw)}catch{return json({error:'Solicitud no válida.'},400)}
-   const id=body?.sessionId,name=clean(body?.name,100).trim(),phone=clean(body?.whatsapp,30).trim();
-   if(!/^cs_(test_|live_)?[a-zA-Z0-9]{10,250}$/.test(id||'')||name.split(/\s+/).length<2||!/^\+[1-9]\d{7,14}$/.test(phone))return json({error:'Completa tu nombre y WhatsApp para continuar.'},400);
+   const id=body?.sessionId,name=clean(body?.name,100).trim(),phone=clean(body?.whatsapp,30).trim(),email=clean(body?.email,200).trim().toLowerCase();
+   if(!/^cs_(test_|live_)?[a-zA-Z0-9]{10,250}$/.test(id||''))return json({error:'Sesión no válida.'},400);
+   if(path==='/api/curso-lead'){
+    if((name&&name.length<2)||(phone&&!/^\+[1-9]\d{3,14}$/.test(phone))||(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))||(!name&&!phone&&!email))return json({error:'Datos incompletos.'},400);
+   }else if(name.split(/\s+/).length<2||!/^\+[1-9]\d{7,14}$/.test(phone))return json({error:'Completa tu nombre y WhatsApp para continuar.'},400);
    const session=await stripe('checkout/sessions/'+encodeURIComponent(id),env,fetcher);
    if(session.metadata?.course_id!==RETO.id||session.status!=='open'||session.client_secret!==body.clientSecret)return json({error:'La sesión de pago cambió. Actualiza la página.'},409);
    if(path==='/api/curso-lead'){
-    if(env.BLOB_READ_WRITE_TOKEN){const {saveLead}=await import('./crm.mjs');await saveLead(env,id,{name,whatsapp:phone,recordings:session.metadata?.recordings==='true',personalCall:session.metadata?.personal_call==='true',paid:false})}
+    if(env.BLOB_READ_WRITE_TOKEN){const {saveLead}=await import('./crm.mjs');await saveLead(env,id,{...(name?{name}:{}),...(phone?{whatsapp:phone}:{}),...(email?{email}:{}),recordings:session.metadata?.recordings==='true',personalCall:session.metadata?.personal_call==='true',paid:false})}
     return json({saved:true});
    }
    if(session.metadata?.recordings!==String(body.recordings===true)||session.metadata?.personal_call!==String(body.personalCall===true))return json({error:'La sesión de pago cambió. Actualiza la página.'},409);
    const params=new URLSearchParams({'metadata[buyer_name]':name,'metadata[whatsapp]':phone});
    await stripe('checkout/sessions/'+encodeURIComponent(id),env,fetcher,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:params.toString()});
-   if(env.BLOB_READ_WRITE_TOKEN){const {saveLead}=await import('./crm.mjs');await saveLead(env,id,{name,whatsapp:phone,recordings:body.recordings===true,personalCall:body.personalCall===true,paid:false})}
+   if(env.BLOB_READ_WRITE_TOKEN){const {saveLead}=await import('./crm.mjs');await saveLead(env,id,{name,whatsapp:phone,...(email&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)?{email}:{}),recordings:body.recordings===true,personalCall:body.personalCall===true,paid:false})}
    return json({updated:true});
   }
   if(path==='/api/session' && request.method==='GET') {
