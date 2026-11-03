@@ -41,7 +41,7 @@ export async function saveLead(env,id,patch){
 async function allLeads(env){
  const paths=[];let cursor;
  do{const page=await list({prefix:LEADS,limit:1000,cursor,token:env.BLOB_READ_WRITE_TOKEN});paths.push(...page.blobs.map(b=>b.pathname));cursor=page.hasMore?page.cursor:undefined}while(cursor&&paths.length<10000);
- const rows=[];for(let i=0;i<paths.length;i+=12){const batch=await Promise.all(paths.slice(i,i+12).map(path=>readBlob(path,env)));rows.push(...batch.filter(Boolean).map(x=>x.value))}
+ const rows=[];for(let i=0;i<paths.length;i+=12){const batch=await Promise.all(paths.slice(i,i+12).map(path=>readBlob(path,env)));rows.push(...batch.filter(Boolean).map(x=>({...x.value,eventDate:x.value.eventDate||'2026-11-16'})))}
  return rows.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
 }
 function cookies(request){return Object.fromEntries((request.headers.get('cookie')||'').split(';').map(x=>x.trim().split('=').slice(0,2)).filter(x=>x.length===2))}
