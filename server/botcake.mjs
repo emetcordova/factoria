@@ -28,7 +28,8 @@ export async function deliverPaidCourse(env,customer,{force=false,fetcher=fetch}
  const config=await getBotcakeConfig(env);if(!config?.apiKey||!config.flows?.coursePaid)return {status:'pending'};
  const path=deliveryPath(purchaseId),previous=await read(path,env);
  if(previous?.data.status==='sent'&&!force)return {status:'sent',duplicate:true,patch:{whatsappSent:true,whatsappSentAt:previous.data.whatsappSentAt,botcakeStatus:'sent',botcakeError:null,botcakeMessageId:previous.data.botcakeMessageId||null}};
- if(previous?.data.status==='sending'&&Date.now()-previous.data.startedAt<120000)return {status:'pending',duplicate:true};
+ if(previous?.data.status==='failed'&&!force)return {status:'failed',duplicate:true,patch:{whatsappSent:false,botcakeStatus:'failed',botcakeError:previous.data.botcakeError||'Error anterior de Botcake',botcakeMessageId:null}};
+ if(previous?.data.status==='sending'&&!force)return {status:'pending',duplicate:true};
  const claim={status:'sending',startedAt:Date.now(),purchaseId};
  try{await put(path,JSON.stringify(claim),{...opts(env),contentType:'application/json',allowOverwrite:Boolean(previous),...(previous?{ifMatch:previous.etag}:{})})}catch{return {status:'pending',duplicate:true}}
  const base={customerId:purchaseId,purchaseId,phone:normalizePhone(customer.whatsapp),flowId:config.flows.coursePaid,date:new Date().toISOString()};
