@@ -1,4 +1,4 @@
-import {get,put,list,del} from '@vercel/blob';
+import {get,put,list} from '@vercel/blob';
 
 const encoder=new TextEncoder();
 const ADMIN='emet@4we.pe';
@@ -108,8 +108,3 @@ export async function handlePaidApi(request,env){
  }catch{return json({error:'No se pudo consultar la API.'},500)}
 }
 
-export async function cleanupProbe(request,env){
- // This temporary route is removed after verifying and deleting test records.
- if(request.method!=='POST'||!env.CRM_PROBE_SECRET||!env.BLOB_READ_WRITE_TOKEN||!await constantEqual(request.headers.get('authorization')||'',`Bearer ${env.CRM_PROBE_SECRET}`))return json({error:'No autorizado.'},401);
- try{const rows=await allLeads(env),probes=rows.filter(row=>row.name==='Prueba tecnica Factoria'&&row.whatsapp==='+51900000000'&&!row.paid);await Promise.all(probes.map(row=>del(LEADS+row.sessionId+'.json',{token:env.BLOB_READ_WRITE_TOKEN})));return json({total:rows.length,removed:probes.length})}catch(error){console.error('CRM probe cleanup failed',error);return json({error:'No se pudo comprobar el almacenamiento.'},500)}
-}

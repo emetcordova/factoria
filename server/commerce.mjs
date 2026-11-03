@@ -83,7 +83,6 @@ export async function handleApi(request,env,fetcher=fetch) {
  try {
   if(path.startsWith('/api/panel/')){const {handlePanelApi}=await import('./crm.mjs');return handlePanelApi(request,env)}
   if(path==='/api/crm/paid'){const {handlePaidApi}=await import('./crm.mjs');return handlePaidApi(request,env)}
-  if(path==='/api/crm/probe'){const {cleanupProbe}=await import('./crm.mjs');return cleanupProbe(request,env)}
   const reto=path==='/api/checkout-curso'||(path==='/api/config'&&u.searchParams.get('event')==='curso');
   const pasarela=path==='/api/checkout-pasarela'||(path==='/api/config'&&u.searchParams.get('event')==='pasarela');
   const cfg=settings(pasarela?{...env,EVENT_DAY:'12',EVENT_MONTH:'11',EVENT_YEAR:'2026',EVENT_DATE:'jueves 12 de noviembre de 2026',COURSE_PRICE_PEN:'50'}:env), c=cfg.course, bump=cfg.orderBump;
