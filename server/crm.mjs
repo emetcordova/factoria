@@ -32,7 +32,9 @@ export async function saveLead(env,id,patch){
  const path=LEADS+id+'.json';
  for(let attempt=0;attempt<3;attempt++){
   const existing=await readBlob(path,env),prior=existing?.value||{};
-  const value={...prior,...patch,sessionId:id,createdAt:prior.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString(),paid:prior.paid===true||patch.paid===true};
+  const value={whatsappSent:false,whatsappSentAt:null,botcakeStatus:null,botcakeError:null,botcakeMessageId:null,...prior,...patch,sessionId:id,createdAt:prior.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString(),paid:prior.paid===true||patch.paid===true};
+  if(value.paid&&value.botcakeStatus===null)value.botcakeStatus='pending';
+  value.coursePaid=value.paid;
   for(const field of ['name','email','whatsapp'])if(!value[field]&&prior[field])value[field]=prior[field];
   if(prior.paid===true&&patch.paid!==true){value.recordings=prior.recordings;value.personalCall=prior.personalCall;value.amount=prior.amount;value.paidAt=prior.paidAt;}
   try{await writeBlob(path,value,env,existing?.etag);return value}catch(error){if(attempt===2)throw error}
@@ -41,7 +43,7 @@ export async function saveLead(env,id,patch){
 async function allLeads(env){
  const paths=[];let cursor;
  do{const page=await list({prefix:LEADS,limit:1000,cursor,token:env.BLOB_READ_WRITE_TOKEN});paths.push(...page.blobs.map(b=>b.pathname));cursor=page.hasMore?page.cursor:undefined}while(cursor&&paths.length<10000);
- const rows=[];for(let i=0;i<paths.length;i+=12){const batch=await Promise.all(paths.slice(i,i+12).map(path=>readBlob(path,env)));rows.push(...batch.filter(Boolean).map(x=>({...x.value,eventDate:x.value.eventDate||'2026-11-16'})))}
+ const rows=[];for(let i=0;i<paths.length;i+=12){const batch=await Promise.all(paths.slice(i,i+12).map(path=>readBlob(path,env)));rows.push(...batch.filter(Boolean).map(x=>({...x.value,eventDate:x.value.eventDate||'2026-11-16',coursePaid:x.value.paid===true,whatsappSent:x.value.whatsappSent===true,whatsappSentAt:x.value.whatsappSentAt||null,botcakeStatus:x.value.botcakeStatus||(x.value.paid?'pending':null),botcakeError:x.value.botcakeError||null,botcakeMessageId:x.value.botcakeMessageId||null})))}
  return rows.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
 }
 function cookies(request){return Object.fromEntries((request.headers.get('cookie')||'').split(';').map(x=>x.trim().split('=').slice(0,2)).filter(x=>x.length===2))}
@@ -52,7 +54,7 @@ const cookie=(value,maxAge)=>`${SESSION_COOKIE}=${value}; Path=/api/panel; HttpO
 function sameOrigin(request){const url=new URL(request.url);return request.headers.get('origin')===url.origin}
 async function bodyJson(request){if(!request.headers.get('content-type')?.startsWith('application/json'))throw Error('invalid_content_type');const raw=await request.text();if(raw.length>4096)throw Error('invalid_size');return JSON.parse(raw)}
 async function throttle(request,env,failed){const ip=clean(request.headers.get('x-forwarded-for')?.split(',')[0],100)||'unknown',key='crm/attempts/'+await sha(ip)+'.json',entry=await readBlob(key,env),now=Date.now();let value=entry?.value||{count:0,until:now+900000};if(value.until<now)value={count:0,until:now+900000};if(failed){value.count++;await writeBlob(key,value,env,entry?.etag)}return value.count>=6}
-function csv(rows){const cols=['createdAt','eventDate','name','email','whatsapp','paid','recordings','personalCall','amount','paidAt','sessionId'];const quote=v=>'"'+String(v??'').replaceAll('"','""')+'"';return '\ufeff'+[cols.join(','),...rows.map(row=>cols.map(c=>quote(typeof row[c]==='boolean'?(row[c]?'Sí':'No'):row[c])).join(','))].join('\r\n')}
+function csv(rows){const cols=['createdAt','eventDate','name','email','whatsapp','paid','recordings','personalCall','amount','paidAt','whatsappSent','whatsappSentAt','botcakeStatus','botcakeError','botcakeMessageId','sessionId'];const quote=v=>'"'+String(v??'').replaceAll('"','""')+'"';return '\ufeff'+[cols.join(','),...rows.map(row=>cols.map(c=>quote(typeof row[c]==='boolean'?(row[c]?'Sí':'No'):row[c])).join(','))].join('\r\n')}
 
 export async function handlePanelApi(request,env){
  if(!configured(env))return json({error:'El panel aún no está configurado.'},503);
@@ -88,6 +90,14 @@ export async function handlePanelApi(request,env){
    const payload=b64(JSON.stringify({exp:Date.now()+8*3600000,version:next.version}));return json({ok:true},200,{'Set-Cookie':cookie(payload+'.'+await sign(payload,env),8*3600)});
   }
   if(admin.mustChange)return json({error:'Cambia la contraseña inicial para continuar.'},403);
+  if(path==='/api/panel/botcake'){const {botcakeSettings}=await import('./botcake.mjs');return botcakeSettings(request,env)}
+  if(path==='/api/panel/botcake/test'&&method==='POST'){const {botcakeTest}=await import('./botcake.mjs');return botcakeTest(request,env)}
+  if(path==='/api/panel/botcake/resend'&&method==='POST'){
+   const data=await bodyJson(request),id=clean(data.sessionId,260);
+   if(!/^cs_(test_|live_)?[A-Za-z0-9]{10,250}$/.test(id))return json({error:'Compra no encontrada.'},404);
+   const row=await readBlob(LEADS+id+'.json',env);if(!row?.value.paid)return json({error:'Compra confirmada no encontrada.'},404);
+   const {deliverPaidCourse}=await import('./botcake.mjs');const result=await deliverPaidCourse(env,row.value,{force:true});if(result.patch)await saveLead(env,id,result.patch);return json(result,result.status==='failed'?502:200);
+  }
   if(path==='/api/panel/api-key'&&method==='GET')return json({key:env.CRM_API_KEY||null,endpoint:new URL('/api/crm/paid',request.url).href});
   if(path==='/api/panel/leads'&&method==='GET'){
    const rows=await allLeads(env);

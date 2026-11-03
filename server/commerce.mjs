@@ -195,7 +195,7 @@ export async function handleApi(request,env,fetcher=fetch) {
    const event=JSON.parse(raw);
    if(['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type) && (isCoursePurchase(event.data?.object,c,bump)||isRetoPurchase(event.data?.object))) {
     const s=event.data.object,product=s.metadata.course_id===RETO.id?RETO:c;
-    if(product===RETO&&env.BLOB_READ_WRITE_TOKEN){const {saveLead}=await import('./crm.mjs');await saveLead(env,s.id,{name:clean(s.metadata?.buyer_name||s.customer_details?.name,100),email:clean(s.customer_details?.email,200),whatsapp:clean(s.metadata?.whatsapp,30),eventDate:s.metadata?.event_date||'2026-11-16',recordings:retoOptions(s).recordings,personalCall:retoOptions(s).personalCall,amount:s.amount_total/100,paid:true,paidAt:new Date((Number(event.created)||Date.now()/1000)*1000).toISOString()})}
+    if(product===RETO&&env.BLOB_READ_WRITE_TOKEN){const {saveLead}=await import('./crm.mjs');const row=await saveLead(env,s.id,{name:clean(s.metadata?.buyer_name||s.customer_details?.name,100),email:clean(s.customer_details?.email,200),whatsapp:clean(s.metadata?.whatsapp,30),eventDate:s.metadata?.event_date||'2026-11-16',recordings:retoOptions(s).recordings,personalCall:retoOptions(s).personalCall,amount:s.amount_total/100,paid:true,paidAt:new Date((Number(event.created)||Date.now()/1000)*1000).toISOString()});if(row?.whatsapp&&!row.whatsappSent){const {deliverPaidCourse}=await import('./botcake.mjs');const delivery=await deliverPaidCourse(env,row);if(delivery.patch)await saveLead(env,s.id,delivery.patch)}}
     const delivery=await sendPurchase(s,event,env,fetcher,product,bump,siteOrigin);return json({received:true,delivery});
    }
    return json({received:true});
