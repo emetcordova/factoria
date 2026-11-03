@@ -164,13 +164,13 @@ export async function handleApi(request,env,fetcher=fetch) {
    const session=await stripe('checkout/sessions/'+encodeURIComponent(id),env,fetcher);
    if(session.metadata?.course_id!==RETO.id||session.status!=='open'||session.client_secret!==body.clientSecret)return json({error:'La sesión de pago cambió. Actualiza la página.'},409);
    if(path==='/api/curso-lead'){
-    if(env.BLOB_READ_WRITE_TOKEN){const {saveLead}=await import('./crm.mjs');await saveLead(env,id,{...(name?{name}:{}),...(phone?{whatsapp:phone}:{}),...(email?{email}:{}),recordings:session.metadata?.recordings==='true',personalCall:session.metadata?.personal_call==='true',paid:false})}
+    if(env.BLOB_READ_WRITE_TOKEN){const {saveLead}=await import('./crm.mjs');await saveLead(env,id,{...(name?{name}:{}),...(phone?{whatsapp:phone}:{}),...(email?{email}:{}),eventDate:session.metadata?.event_date||'2026-11-16',recordings:session.metadata?.recordings==='true',personalCall:session.metadata?.personal_call==='true',paid:false})}
     return json({saved:true});
    }
    if(session.metadata?.recordings!==String(body.recordings===true)||session.metadata?.personal_call!==String(body.personalCall===true))return json({error:'La sesión de pago cambió. Actualiza la página.'},409);
    const params=new URLSearchParams({'metadata[buyer_name]':name,'metadata[whatsapp]':phone});
    await stripe('checkout/sessions/'+encodeURIComponent(id),env,fetcher,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:params.toString()});
-   if(env.BLOB_READ_WRITE_TOKEN){const {saveLead}=await import('./crm.mjs');await saveLead(env,id,{name,whatsapp:phone,...(email&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)?{email}:{}),recordings:body.recordings===true,personalCall:body.personalCall===true,paid:false})}
+   if(env.BLOB_READ_WRITE_TOKEN){const {saveLead}=await import('./crm.mjs');await saveLead(env,id,{name,whatsapp:phone,...(email&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)?{email}:{}),eventDate:session.metadata?.event_date||'2026-11-16',recordings:body.recordings===true,personalCall:body.personalCall===true,paid:false})}
    return json({updated:true});
   }
   if(path==='/api/session' && request.method==='GET') {
@@ -180,7 +180,7 @@ export async function handleApi(request,env,fetcher=fetch) {
    const product=session.metadata?.course_id===RETO.id?RETO:c;
    if(session.metadata?.course_id!==product.id)return json({error:'Compra no encontrada.'},404);
    const paid=product===RETO?isRetoPurchase(session):isCoursePurchase(session,c,bump);
-   if(paid&&product===RETO&&env.BLOB_READ_WRITE_TOKEN){const {saveLead}=await import('./crm.mjs');await saveLead(env,session.id,{name:clean(session.metadata?.buyer_name||session.customer_details?.name,100),email:clean(session.customer_details?.email,200),whatsapp:clean(session.metadata?.whatsapp,30),recordings:retoOptions(session).recordings,personalCall:retoOptions(session).personalCall,amount:session.amount_total/100,paid:true,paidAt:new Date((Number(session.created)||Date.now()/1000)*1000).toISOString()})}
+   if(paid&&product===RETO&&env.BLOB_READ_WRITE_TOKEN){const {saveLead}=await import('./crm.mjs');await saveLead(env,session.id,{name:clean(session.metadata?.buyer_name||session.customer_details?.name,100),email:clean(session.customer_details?.email,200),whatsapp:clean(session.metadata?.whatsapp,30),eventDate:session.metadata?.event_date||'2026-11-16',recordings:retoOptions(session).recordings,personalCall:retoOptions(session).personalCall,amount:session.amount_total/100,paid:true,paidAt:new Date((Number(session.created)||Date.now()/1000)*1000).toISOString()})}
    const trackableMode=session.livemode===true||Boolean(env.META_TEST_EVENT_CODE);
    let serverDelivery='not_attempted';
    if(paid&&session.metadata.marketing_consent==='true'&&trackableMode){
@@ -195,7 +195,7 @@ export async function handleApi(request,env,fetcher=fetch) {
    const event=JSON.parse(raw);
    if(['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type) && (isCoursePurchase(event.data?.object,c,bump)||isRetoPurchase(event.data?.object))) {
     const s=event.data.object,product=s.metadata.course_id===RETO.id?RETO:c;
-    if(product===RETO&&env.BLOB_READ_WRITE_TOKEN){const {saveLead}=await import('./crm.mjs');await saveLead(env,s.id,{name:clean(s.metadata?.buyer_name||s.customer_details?.name,100),email:clean(s.customer_details?.email,200),whatsapp:clean(s.metadata?.whatsapp,30),recordings:retoOptions(s).recordings,personalCall:retoOptions(s).personalCall,amount:s.amount_total/100,paid:true,paidAt:new Date((Number(event.created)||Date.now()/1000)*1000).toISOString()})}
+    if(product===RETO&&env.BLOB_READ_WRITE_TOKEN){const {saveLead}=await import('./crm.mjs');await saveLead(env,s.id,{name:clean(s.metadata?.buyer_name||s.customer_details?.name,100),email:clean(s.customer_details?.email,200),whatsapp:clean(s.metadata?.whatsapp,30),eventDate:s.metadata?.event_date||'2026-11-16',recordings:retoOptions(s).recordings,personalCall:retoOptions(s).personalCall,amount:s.amount_total/100,paid:true,paidAt:new Date((Number(event.created)||Date.now()/1000)*1000).toISOString()})}
     const delivery=await sendPurchase(s,event,env,fetcher,product,bump,siteOrigin);return json({received:true,delivery});
    }
    return json({received:true});

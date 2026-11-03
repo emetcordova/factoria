@@ -52,7 +52,7 @@ const cookie=(value,maxAge)=>`${SESSION_COOKIE}=${value}; Path=/api/panel; HttpO
 function sameOrigin(request){const url=new URL(request.url);return request.headers.get('origin')===url.origin}
 async function bodyJson(request){if(!request.headers.get('content-type')?.startsWith('application/json'))throw Error('invalid_content_type');const raw=await request.text();if(raw.length>4096)throw Error('invalid_size');return JSON.parse(raw)}
 async function throttle(request,env,failed){const ip=clean(request.headers.get('x-forwarded-for')?.split(',')[0],100)||'unknown',key='crm/attempts/'+await sha(ip)+'.json',entry=await readBlob(key,env),now=Date.now();let value=entry?.value||{count:0,until:now+900000};if(value.until<now)value={count:0,until:now+900000};if(failed){value.count++;await writeBlob(key,value,env,entry?.etag)}return value.count>=6}
-function csv(rows){const cols=['createdAt','name','email','whatsapp','paid','recordings','personalCall','amount','paidAt','sessionId'];const quote=v=>'"'+String(v??'').replaceAll('"','""')+'"';return '\ufeff'+[cols.join(','),...rows.map(row=>cols.map(c=>quote(typeof row[c]==='boolean'?(row[c]?'Sí':'No'):row[c])).join(','))].join('\r\n')}
+function csv(rows){const cols=['createdAt','eventDate','name','email','whatsapp','paid','recordings','personalCall','amount','paidAt','sessionId'];const quote=v=>'"'+String(v??'').replaceAll('"','""')+'"';return '\ufeff'+[cols.join(','),...rows.map(row=>cols.map(c=>quote(typeof row[c]==='boolean'?(row[c]?'Sí':'No'):row[c])).join(','))].join('\r\n')}
 
 export async function handlePanelApi(request,env){
  if(!configured(env))return json({error:'El panel aún no está configurado.'},503);
