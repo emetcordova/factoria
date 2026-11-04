@@ -40,3 +40,22 @@ html{scroll-padding-top:84px}.reto-topbar{position:sticky;top:0;z-index:85;backg
 @media(max-width:980px){.hero-visual{padding-inline:0}.hero-proof-top{left:-8px}.hero-proof-bottom{right:-8px}.ai-tools{grid-template-columns:1fr;gap:30px;padding:38px}}
 @media(max-width:760px){.hero-visual{padding:86px 0 98px}.hero-proof{width:calc(100% - 12px);padding:14px 15px}.hero-proof-top{left:6px}.hero-proof-bottom{right:6px}.hero-proof blockquote{font-size:12px;line-height:1.4}.hero-proof p{font-size:9px}.ai-tools{margin-top:60px;padding:28px 18px;border-radius:21px}.ai-tools-copy>p:last-child{font-size:14px}.ai-tools-grid{grid-template-columns:1fr}.ai-tools-grid article{min-height:0}.ai-tools-copy h2{font-size:31px}}
 .reto-lead-status{display:block;margin:-4px 0 16px;color:#6c4583;font-size:12px;font-weight:700}.reto-lead-status[hidden]{display:none}
+
+/* A readable, single-column flow and comfortable tap targets on phones. */
+@media(max-width:760px){
+ html{scroll-padding-top:82px}body{overflow-x:clip;padding-bottom:calc(82px + env(safe-area-inset-bottom))}
+ .reto-topbar .wrap{display:grid;grid-template-columns:1fr auto;gap:3px 10px;justify-content:space-between;min-height:0;padding:9px 18px}
+ .reto-topbar .reto-live{grid-column:1;grid-row:1;font-size:12px;font-weight:900}.reto-topbar strong{grid-column:1;grid-row:2;justify-self:start;font-size:10px}.reto-topbar b{grid-column:2;grid-row:1/3;align-self:center;font-size:clamp(16px,5vw,21px);padding:6px 9px}
+ .hero{padding-top:30px;padding-bottom:50px}.hero-copy h1{font-size:clamp(32px,8.5vw,48px);line-height:1.1;letter-spacing:-.045em}
+ .hero-price-highlight{max-width:100%;margin-top:17px;flex-wrap:wrap;justify-content:center;gap:5px 12px;padding:11px 17px}.hero-price-highlight strong{font-size:clamp(53px,16vw,76px)}
+ .hero-video-wrap{max-width:100%;margin:22px auto 18px}.hero-video{border-radius:17px}.hero-schedule{justify-content:center;flex-wrap:wrap;gap:3px 7px;padding:10px 12px;font-size:13px;text-align:center}
+ .hero-visual{display:flex;flex-direction:column;gap:14px;height:auto;margin:34px auto 0;padding:0;max-width:480px}.hero-proof,.hero-proof-top,.hero-proof-bottom{position:static;width:100%;padding:17px 18px}.hero-proof blockquote{font-size:14px;line-height:1.5}.hero-proof p{font-size:11px}
+ .hero-visual .photo-frame{width:100%;max-height:460px;border-radius:120px 120px 18px 18px}.hero-visual .hero-photo{display:block;width:100%;height:100%;max-height:460px;object-fit:cover;object-position:center 30%}
+ .testimonials-rows{grid-template-columns:1fr;gap:12px;padding-inline:0}.testimonials-rows .testimonial{padding:17px;min-height:0}.testimonials-rows .testimonial blockquote{font-size:14px;line-height:1.5}.testimonials-rows .testimonial footer strong{font-size:12px}.testimonials-rows .testimonial-avatar{width:36px;height:36px;flex-basis:36px}
+ .video-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.video-grid>:nth-child(-n+6),.video-grid>.is-secondary{grid-column:auto}.video-grid>:last-child:nth-child(odd){grid-column:1/-1;aspect-ratio:16/9}
+ .ai-tools{margin-top:48px}.reto-checkout{padding-top:46px}.reto-checkout-body{padding:18px 16px}.reto-included li{font-size:13px;line-height:1.45}.reto-option{gap:10px;padding:14px 12px}.reto-option strong{line-height:1.4}.reto-continue{width:100%;min-height:72px;padding:17px 12px;font-size:17px;line-height:1.25}
+ .reto-faq .faq-list details{margin-bottom:8px;padding:10px 15px}.reto-faq .faq-list summary{min-height:44px;display:flex;align-items:center;gap:8px;line-height:1.4}
+ .curso-final{padding:60px 12px 65px}.curso-final h2{font-size:clamp(29px,8vw,42px)}.curso-final-lead br{display:none}.curso-cta.button{width:100%;min-height:88px;padding:18px 16px}.curso-cta strong{font-size:clamp(17px,5vw,23px)}
+ .mobile-cta{gap:10px;padding:10px 16px max(10px,env(safe-area-inset-bottom))}.mobile-cta strong{font-size:22px}.mobile-cta span{font-size:11px}.mobile-cta .button.small{flex:0 0 auto;min-height:50px;padding:12px 14px;font-size:13px;white-space:nowrap}.reto-purchase-toast{bottom:calc(88px + env(safe-area-inset-bottom))}
+}
+@media(max-width:380px){.hero-copy h1{font-size:31px}.mobile-cta{padding-inline:10px;gap:6px}.mobile-cta .button.small{font-size:11px;padding-inline:9px}.mobile-cta>div>span{font-size:10px}.reto-checkout-body{padding-inline:13px}.reto-option strong{font-size:13px}}
